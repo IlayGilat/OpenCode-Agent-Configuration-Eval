@@ -1,0 +1,9 @@
+{
+  "name": "@opencode/context-monitor",
+  "version": "1.0.0",
+  "description": "Monitors context usage for Opencode",
+  "main": "index.ts",
+  "dependencies": {
+    "@opencode-ai/plugin": "*"
+  }
+}
