@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "all": "npm run eval -- run-all",
-    "eval": "tsx src/presentation/cli.ts",
+    "all": "tsx src/cli/runAll.ts",
+    "ticket": "tsx src/cli/runTicket.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "commander": "^14.0.2",
+    "dotenv": "17.4.2",
     "execa": "^9.6.0",
     "jsonrepair": "^3.14.1",
     "zod": "^4.1.13"

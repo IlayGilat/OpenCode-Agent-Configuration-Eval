@@ -1,9 +1,0 @@
-[
-  {
-    "id": "JIRA-001",
-    "title": "Ensure README ends with a newline",
-    "description": "The README should end with a newline so text editors and command-line tools display it cleanly.",
-    "baseCommit": "553c2077f0edc3d5dc5d17262f6aa498e69d6f8e",
-    "goldCommit": "762941318ee16e59dabbacb1b4049eec22f0d303"
-  }
-]

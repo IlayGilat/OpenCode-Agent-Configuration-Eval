@@ -1,0 +1,23 @@
+[
+  {
+    "id": "FDT-001",
+    "title": "Support Flask host_matching URLs for toolbar assets",
+    "description": "Based on GitHub issue pallets-eco/flask-debugtoolbar#269. Flask-DebugToolbar does not generate valid asset URLs when the Flask app is created with host_matching=True and a static_host. Reproduce with an app configured for host_matching and verify the injected toolbar HTML no longer contains invalid http:/// asset URLs. Update the toolbar URL generation so JavaScript and CSS assets load correctly for host-matched routes.",
+    "baseCommit": "449405e3ba2f6a9a6aeeccd919a72d8cb098443f",
+    "goldCommit": "877e69dc942d5a3cb850bd446ab0f3b777701149"
+  },
+  {
+    "id": "FDT-002",
+    "title": "Remove remaining jQuery migrate deprecation warnings",
+    "description": "Based on GitHub issue pallets-eco/flask-debugtoolbar#281. Version 0.15.1 still emits jQuery Migrate warnings from toolbar JavaScript, including deprecated $.trim usage and deprecated bind/unbind handlers. Clean up the toolbar JavaScript and bundled tablesorter usage so the debug toolbar no longer triggers those migration warnings while preserving the existing toolbar behavior.",
+    "baseCommit": "e3ce6eb0a6b53bdda3cee89ef844bc31baf9afb6",
+    "goldCommit": "07f85152b539b11726887682d6f8318bcb349b5c"
+  },
+  {
+    "id": "FDT-003",
+    "title": "Fix profiler panel dump_filename attribute error",
+    "description": "Based on GitHub issue pallets-eco/flask-debugtoolbar#286. Enabling the profiler panel can raise AttributeError because ProfilerDebugPanel does not have a dump_filename attribute when the panel runs. Make the profiler panel handle its dump filename consistently so enabling profiling no longer crashes a request.",
+    "baseCommit": "07f85152b539b11726887682d6f8318bcb349b5c",
+    "goldCommit": "40f8645ec9dd1580a2cc52b1731d3f34a8132afd"
+  }
+]
