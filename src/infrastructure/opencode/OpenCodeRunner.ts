@@ -4,23 +4,30 @@ import type { EvalConfig, OpenCodeLogPaths, OpenCodeRunResult } from "../../doma
 import { ProcessRunner } from "../process/ProcessRunner.js";
 
 export class OpenCodeRunner {
+  private static readonly placeholderModel = "your-provider/your-model";
+
   constructor(
     private readonly config: EvalConfig,
     private readonly processRunner: ProcessRunner,
   ) {}
 
   async run(input: { cwd: string; prompt: string; logs?: OpenCodeLogPaths }): Promise<OpenCodeRunResult> {
+    if (this.config.model === OpenCodeRunner.placeholderModel) {
+      throw new Error(
+        `configurations/eval.config.json still has the placeholder model "${OpenCodeRunner.placeholderModel}". Set "model" to a real provider/model before running solver or judge phases.`,
+      );
+    }
+
     const args = [
       "run",
       "--dir",
       input.cwd,
       "--format",
       "default",
+      "--print-logs",
+      "--model",
+      this.config.model,
     ];
-
-    if (this.config.model && this.config.model !== "your-provider/your-model") {
-      args.push("--model", this.config.model);
-    }
 
     args.push(input.prompt);
 
@@ -62,6 +69,7 @@ export class OpenCodeRunner {
     transcript.write([
       "",
       `===== OPENCODE ${paths.phase.toUpperCase()} START ${new Date().toISOString()} =====`,
+      `Raw terminal/log stream for this ${paths.phase} run is appended below.`,
       "",
     ].join("\n"));
 
