@@ -1,0 +1,2329 @@
+# TypeScript Local Agent Evaluation System Report
+
+## 1. Detailed Design
+
+### 1.1 Purpose
+
+The purpose of this system is to create a simple local evaluation harness for testing how well the current OpenCode agent setup performs on real historical Jira tickets from one local repository.
+
+This is not a production benchmark system.
+This is not a cloud service.
+This is not a CI/CD system.
+This is not a generic multi-repo platform.
+
+It is a Windows-only local TypeScript CLI application that loops through around 50 Jira tickets, lets OpenCode solve each ticket, compares the generated patch against the real merged PR patch, and produces a final report with:
+
+* median score
+* average score
+* score table
+* verdict distribution
+* executive summary
+* common strengths
+* common problems
+* recommendations for improving `AGENTS.md`, OpenCode agents, skills, MCPs, and repo instructions
+
+The main thing being evaluated is not a different model.
+The main thing being evaluated is the current local agent setup around the model:
+
+```text
+AGENTS.md
+OpenCode config
+agents
+subagents
+skills
+MCPs
+repo conventions
+prompting setup
+```
+
+The same model is used for solving and judging.
+
+---
+
+### 1.2 Main Evaluation Idea
+
+For every Jira ticket, the system does the following:
+
+```text
+1. Checkout the repo at the commit before the original PR.
+2. Give OpenCode only the Jira title and Jira description.
+3. Let OpenCode inspect the repo and make changes.
+4. Capture the resulting git diff as candidate.patch.
+5. Generate the real PR patch from baseCommit to goldCommit.
+6. Ask OpenCode, acting as judge, to compare candidate.patch to gold.patch.
+7. Save a score from 0 to 100.
+8. Continue to the next ticket.
+9. At the end, aggregate all scores and generate reports.
+```
+
+The solver does not see the real PR, gold patch, judge prompt, or scoring rubric.
+
+The judge does see:
+
+```text
+ticket.md
+candidate.patch
+gold.patch
+rubric
+```
+
+This is subjective because there are no automated tests.
+The goal is not perfect correctness.
+The goal is to estimate whether the generated PR “looks good” compared to the real merged PR.
+
+---
+
+### 1.3 Key Constraints
+
+The design follows these constraints:
+
+```text
+- Windows only
+- Local only
+- One repo only
+- Around 50 Jira tickets
+- No automated tests
+- No Jira MCP
+- No database
+- No web server
+- No Docker
+- No CI/CD
+- No package version pinning in the design document
+- One model used for both solver and judge
+- OpenCode is run headlessly
+- Filesystem is used as storage
+- The application is written in TypeScript
+- The system should not be a god file
+```
+
+---
+
+### 1.4 Runtime and Tech Stack
+
+The application is designed to run only on Windows locally.
+
+Use:
+
+```text
+Node.js
+TypeScript
+npm
+Windows PowerShell
+Git for Windows
+OpenCode CLI
+```
+
+The system assumes these tools are installed and available from PowerShell:
+
+```text
+node
+npm
+git
+opencode
+```
+
+Core packages:
+
+```powershell
+npm add commander zod execa
+npm add -D typescript tsx @types/node
+```
+
+Package responsibilities:
+
+| Package       | Purpose                                                      |
+| ------------- | ------------------------------------------------------------ |
+| `commander`   | CLI commands such as `run-all`, `run`, `report`, and `clean` |
+| `zod`         | Runtime validation for config, tickets, and judge output     |
+| `execa`       | Running external commands like `git` and `opencode` safely   |
+| `tsx`         | Running TypeScript files directly during local development   |
+| `typescript`  | Type checking                                                |
+| `@types/node` | Node.js typings                                              |
+
+The system should not add:
+
+```text
+database
+web server
+queue
+ORM
+Docker
+cloud storage
+CI system
+frontend UI
+```
+
+---
+
+### 1.5 Windows-Only Rules
+
+Because the app only needs to run on Windows, the implementation can be optimized for local PowerShell usage.
+
+However, path handling should still be clean.
+
+Use Node’s path utilities:
+
+```ts
+import path from "node:path";
+
+path.resolve(...);
+path.join(...);
+```
+
+Do not manually concatenate paths:
+
+```ts
+const filePath = basePath + "/" + fileName;
+```
+
+This is especially important on Windows because paths may look like:
+
+```text
+C:\Users\you\projects\repo
+```
+
+or may be written in config as:
+
+```json
+{
+  "repoPath": "../my-real-repo",
+  "workspacePath": "./workspace"
+}
+```
+
+The config can use forward slashes.
+The application should normalize them internally with `path.resolve`.
+
+Cleanup should be done in TypeScript, not shell commands.
+
+Use:
+
+```ts
+await fs.rm(workspacePath, {
+  recursive: true,
+  force: true,
+});
+```
+
+Do not rely on Linux/macOS commands like:
+
+```bash
+rm -rf workspace
+```
+
+Shelling out should be limited to:
+
+```text
+git
+opencode
+```
+
+Everything else should be done in TypeScript.
+
+---
+
+### 1.6 CLI Commands
+
+The application should expose a small CLI.
+
+Recommended `package.json` script:
+
+```json
+{
+  "scripts": {
+    "eval": "tsx src/cli.ts"
+  }
+}
+```
+
+PowerShell commands:
+
+```powershell
+npm run eval -- run-all
+npm run eval -- run JIRA-001
+npm run eval -- report
+npm run eval -- clean
+```
+
+Command meaning:
+
+| Command        | Meaning                                                   |
+| -------------- | --------------------------------------------------------- |
+| `run-all`      | Run the evaluation loop for all tickets in `tickets.json` |
+| `run JIRA-001` | Run the evaluation for one specific ticket                |
+| `report`       | Regenerate reports from existing `score.json` files       |
+| `clean`        | Delete local workspace folders                            |
+
+The main command is:
+
+```powershell
+npm run eval -- run-all
+```
+
+---
+
+### 1.7 Input Config
+
+The system uses one config file.
+
+`eval.config.json`
+
+```json
+{
+  "repoPath": "../my-real-repo",
+  "workspacePath": "./workspace",
+  "runsPath": "./runs",
+  "reportsPath": "./reports",
+  "opencodeCommand": "opencode",
+  "model": "your-provider/your-model",
+  "timeoutMinutes": 60
+}
+```
+
+Field meaning:
+
+| Field             | Meaning                                              |
+| ----------------- | ---------------------------------------------------- |
+| `repoPath`        | Path to the real local Windows repo with git history |
+| `workspacePath`   | Local folder where clean worktrees are created       |
+| `runsPath`        | Local folder where per-ticket artifacts are saved    |
+| `reportsPath`     | Local folder where final reports are written         |
+| `opencodeCommand` | Usually `opencode`                                   |
+| `model`           | Same model used for solver and judge                 |
+| `timeoutMinutes`  | Maximum time for each OpenCode call                  |
+
+There is no separate `solverModel` and `judgeModel`.
+
+Use one field:
+
+```json
+{
+  "model": "your-provider/your-model"
+}
+```
+
+The same model is used twice:
+
+```text
+solver phase
+judge phase
+```
+
+---
+
+### 1.8 Tickets Input
+
+All Jira tickets are stored in one local JSON file.
+
+`tickets.json`
+
+```json
+[
+  {
+    "id": "JIRA-001",
+    "title": "Fix settings modal not saving theme",
+    "description": "When the user changes the theme in the settings modal and clicks save, the modal closes but the theme is not persisted.",
+    "baseCommit": "abc123",
+    "goldCommit": "def456"
+  },
+  {
+    "id": "JIRA-002",
+    "title": "Fix export crash when item list is empty",
+    "description": "The export flow crashes when the selected item list is empty. It should export an empty file instead.",
+    "baseCommit": "aaa111",
+    "goldCommit": "bbb222"
+  }
+]
+```
+
+Each ticket requires:
+
+| Field         | Meaning                                       |
+| ------------- | --------------------------------------------- |
+| `id`          | Stable ticket ID used for folders and reports |
+| `title`       | Jira ticket title                             |
+| `description` | Jira ticket description                       |
+| `baseCommit`  | Commit before the original PR work started    |
+| `goldCommit`  | Commit after the real solution was merged     |
+
+The system assumes `repoPath` contains the full git history required for all base and gold commits.
+
+---
+
+### 1.9 Folder Structure
+
+The project should be structured as a small TypeScript system, not one large script.
+
+```text
+agent-eval/
+  package.json
+  tsconfig.json
+
+  eval.config.json
+  tickets.json
+
+  src/
+    cli.ts
+
+    config/
+      ConfigLoader.ts
+      schemas.ts
+
+    tickets/
+      TicketLoader.ts
+      TicketPromptBuilder.ts
+
+    git/
+      GitService.ts
+      WorkspaceService.ts
+      PatchService.ts
+
+    opencode/
+      OpenCodeRunner.ts
+      SolverRunner.ts
+      JudgeRunner.ts
+
+    scoring/
+      JudgePromptBuilder.ts
+      JudgeResultParser.ts
+      ScoreAggregator.ts
+
+    reports/
+      ReportGenerator.ts
+      MarkdownReportWriter.ts
+      CsvReportWriter.ts
+      JsonReportWriter.ts
+
+    runs/
+      RunService.ts
+      RunPaths.ts
+      RunRepository.ts
+
+    utils/
+      FileSystem.ts
+      Logger.ts
+      ProcessRunner.ts
+      JsonUtils.ts
+
+    types/
+      domain.ts
+
+  workspace/
+    JIRA-001/
+    JIRA-002/
+
+  runs/
+    JIRA-001/
+      ticket.md
+      gold.patch
+      candidate.patch
+      solver-output.txt
+      judge-input.md
+      judge-output.txt
+      score.json
+
+  reports/
+    results.json
+    results.csv
+    summary.md
+```
+
+---
+
+### 1.10 Storage Model
+
+The system uses the filesystem as the database.
+
+There are three main storage areas:
+
+```text
+workspace/
+runs/
+reports/
+```
+
+#### `workspace/`
+
+Temporary git worktrees are created here.
+
+Example:
+
+```text
+workspace/
+  JIRA-001/
+  JIRA-002/
+```
+
+Each workspace is a checkout of the real repo at the ticket’s `baseCommit`.
+
+The solver runs inside this workspace.
+
+#### `runs/`
+
+Permanent per-ticket artifacts are saved here.
+
+Example:
+
+```text
+runs/
+  JIRA-001/
+    ticket.md
+    gold.patch
+    candidate.patch
+    solver-output.txt
+    judge-input.md
+    judge-output.txt
+    score.json
+```
+
+This folder is useful for debugging and auditability.
+
+#### `reports/`
+
+Final summary outputs are saved here.
+
+Example:
+
+```text
+reports/
+  results.json
+  results.csv
+  summary.md
+```
+
+---
+
+### 1.11 Domain Types
+
+The core domain types should live in:
+
+```text
+src/types/domain.ts
+```
+
+Recommended types:
+
+```ts
+export type EvalConfig = {
+  repoPath: string;
+  workspacePath: string;
+  runsPath: string;
+  reportsPath: string;
+  opencodeCommand: string;
+  model: string;
+  timeoutMinutes: number;
+};
+
+export type JiraTicket = {
+  id: string;
+  title: string;
+  description: string;
+  baseCommit: string;
+  goldCommit: string;
+};
+
+export type TicketRunPaths = {
+  runDir: string;
+  ticketMarkdownPath: string;
+  goldPatchPath: string;
+  candidatePatchPath: string;
+  solverOutputPath: string;
+  judgeInputPath: string;
+  judgeOutputPath: string;
+  scorePath: string;
+};
+
+export type JudgeResult = {
+  taskId: string;
+  score: number;
+  verdict: "fail" | "weak" | "partial" | "good" | "excellent";
+  solve_probability: number;
+  gold_alignment: number;
+  repo_pattern_quality: number;
+  minimality: number;
+  risk: number;
+  would_i_merge: boolean;
+  summary: string;
+  strengths: string[];
+  problems: string[];
+};
+
+export type RunResult = {
+  taskId: string;
+  title: string;
+  score: number;
+  verdict: string;
+  wouldIMerge: boolean;
+  summary: string;
+};
+
+export type VerdictDistribution = {
+  excellent: number;
+  good: number;
+  partial: number;
+  weak: number;
+  fail: number;
+};
+
+export type EvalSummary = {
+  totalTickets: number;
+  completed: number;
+  medianScore: number;
+  averageScore: number;
+  wouldMergeRate: number;
+  verdictDistribution: VerdictDistribution;
+};
+
+export type ReportModel = {
+  summary: EvalSummary;
+  tickets: RunResult[];
+  executiveSummary: string;
+  commonStrengths: string[];
+  commonProblems: string[];
+  recommendations: string[];
+};
+```
+
+---
+
+### 1.12 Validation
+
+Use Zod for validation.
+
+Validation should exist for:
+
+```text
+eval.config.json
+tickets.json
+judge output JSON
+```
+
+The application should fail early if:
+
+```text
+repoPath does not exist
+tickets.json is invalid
+a ticket is missing baseCommit
+a ticket is missing goldCommit
+timeoutMinutes is invalid
+judge output cannot be parsed
+```
+
+The config loader should normalize paths using `path.resolve`.
+
+Example responsibility:
+
+```text
+ConfigLoader
+  -> read eval.config.json
+  -> parse JSON
+  -> validate with Zod
+  -> normalize paths
+  -> return EvalConfig
+```
+
+---
+
+### 1.13 Module Responsibilities
+
+#### CLI Layer
+
+`src/cli.ts`
+
+Responsibilities:
+
+```text
+- Parse command-line arguments.
+- Create application services.
+- Dispatch commands to RunService or ReportGenerator.
+- Keep business logic out of the CLI file.
+```
+
+Commands:
+
+```text
+run-all
+run <ticketId>
+report
+clean
+```
+
+The CLI should be thin.
+It should not manually run git commands, build prompts, parse scores, or write reports.
+
+---
+
+#### Config Module
+
+`src/config/ConfigLoader.ts`
+
+Responsibilities:
+
+```text
+- Read eval.config.json.
+- Validate it.
+- Normalize local Windows paths.
+- Return EvalConfig.
+```
+
+`src/config/schemas.ts`
+
+Responsibilities:
+
+```text
+- Export Zod schemas for EvalConfig.
+- Export Zod schemas for JiraTicket.
+- Export Zod schemas for JudgeResult.
+```
+
+---
+
+#### Tickets Module
+
+`src/tickets/TicketLoader.ts`
+
+Responsibilities:
+
+```text
+- Read tickets.json.
+- Validate all tickets.
+- Return all tickets.
+- Return one ticket by ID.
+```
+
+`src/tickets/TicketPromptBuilder.ts`
+
+Responsibilities:
+
+```text
+- Convert JiraTicket into the solver prompt.
+- Keep the solver prompt stable across all evaluations.
+```
+
+The solver prompt should be intentionally simple so the system evaluates the repo setup and agent setup, not a hyper-optimized ticket prompt.
+
+---
+
+#### Git Module
+
+`src/git/GitService.ts`
+
+Responsibilities:
+
+```text
+- Wrap git CLI calls.
+- Create git worktrees.
+- Remove git worktrees.
+- Run git diff.
+- Run git reset.
+- Run git clean.
+```
+
+`src/git/WorkspaceService.ts`
+
+Responsibilities:
+
+```text
+- Create a clean workspace for each ticket.
+- Remove existing workspace folder if needed.
+- Checkout baseCommit using GitService.
+- Return the workspace path.
+```
+
+`src/git/PatchService.ts`
+
+Responsibilities:
+
+```text
+- Generate gold.patch from baseCommit to goldCommit.
+- Capture candidate.patch from the solver workspace.
+- Detect whether candidate.patch is empty.
+```
+
+---
+
+#### OpenCode Module
+
+`src/opencode/OpenCodeRunner.ts`
+
+Responsibilities:
+
+```text
+- Run opencode run.
+- Pass working directory.
+- Pass model.
+- Pass prompt.
+- Capture stdout.
+- Capture stderr.
+- Enforce timeout.
+```
+
+`src/opencode/SolverRunner.ts`
+
+Responsibilities:
+
+```text
+- Build or receive the solver prompt.
+- Run OpenCode inside the ticket workspace.
+- Return solver output.
+```
+
+`src/opencode/JudgeRunner.ts`
+
+Responsibilities:
+
+```text
+- Run OpenCode as the judge.
+- Return raw judge output.
+```
+
+---
+
+#### Scoring Module
+
+`src/scoring/JudgePromptBuilder.ts`
+
+Responsibilities:
+
+```text
+- Build the judge prompt.
+- Insert ticket text.
+- Insert gold.patch.
+- Insert candidate.patch.
+- Insert rubric.
+```
+
+`src/scoring/JudgeResultParser.ts`
+
+Responsibilities:
+
+```text
+- Extract JSON from raw judge output.
+- Validate the JSON.
+- Return JudgeResult.
+```
+
+`src/scoring/ScoreAggregator.ts`
+
+Responsibilities:
+
+```text
+- Read all scores.
+- Calculate median score.
+- Calculate average score.
+- Calculate would-merge rate.
+- Calculate verdict distribution.
+```
+
+---
+
+#### Runs Module
+
+`src/runs/RunPaths.ts`
+
+Responsibilities:
+
+```text
+- Given a ticket ID, generate all run artifact paths.
+```
+
+Example output:
+
+```text
+runs/JIRA-001/ticket.md
+runs/JIRA-001/gold.patch
+runs/JIRA-001/candidate.patch
+runs/JIRA-001/solver-output.txt
+runs/JIRA-001/judge-input.md
+runs/JIRA-001/judge-output.txt
+runs/JIRA-001/score.json
+```
+
+`src/runs/RunRepository.ts`
+
+Responsibilities:
+
+```text
+- Create run folders.
+- Write ticket.md.
+- Write gold.patch.
+- Write candidate.patch.
+- Write solver-output.txt.
+- Write judge-input.md.
+- Write judge-output.txt.
+- Write score.json.
+- Read all existing score.json files.
+```
+
+`src/runs/RunService.ts`
+
+Responsibilities:
+
+```text
+- Orchestrate the full ticket evaluation lifecycle.
+- Coordinate workspace creation.
+- Coordinate solver run.
+- Coordinate patch capture.
+- Coordinate judge run.
+- Coordinate score saving.
+```
+
+`RunService` is the main application service, but it should still delegate actual work to smaller services.
+
+---
+
+#### Reports Module
+
+`src/reports/ReportGenerator.ts`
+
+Responsibilities:
+
+```text
+- Convert JudgeResult[] into ReportModel.
+- Call ScoreAggregator.
+- Prepare executive summary content.
+- Prepare common strengths and problems.
+- Prepare recommendations.
+```
+
+`src/reports/MarkdownReportWriter.ts`
+
+Responsibilities:
+
+```text
+- Write reports/summary.md.
+```
+
+`src/reports/CsvReportWriter.ts`
+
+Responsibilities:
+
+```text
+- Write reports/results.csv.
+```
+
+`src/reports/JsonReportWriter.ts`
+
+Responsibilities:
+
+```text
+- Write reports/results.json.
+```
+
+---
+
+#### Utils Module
+
+`src/utils/ProcessRunner.ts`
+
+Responsibilities:
+
+```text
+- Wrap execa.
+- Apply timeout.
+- Return stdout and stderr.
+- Convert command failures into useful errors.
+```
+
+`src/utils/FileSystem.ts`
+
+Responsibilities:
+
+```text
+- Read files.
+- Write files.
+- Ensure directories exist.
+- Remove folders.
+- Read JSON.
+- Write JSON.
+```
+
+`src/utils/Logger.ts`
+
+Responsibilities:
+
+```text
+- Print progress.
+- Print ticket currently running.
+- Print score after each ticket.
+- Print final report paths.
+```
+
+`src/utils/JsonUtils.ts`
+
+Responsibilities:
+
+```text
+- Extract JSON object from raw text.
+- Safely parse JSON.
+```
+
+---
+
+### 1.14 Per-Ticket Execution Flow
+
+For each ticket, `RunService.runTicket(ticket)` should do this:
+
+```text
+1. Create runs/<ticketId>/.
+2. Prepare workspace/<ticketId>/ at baseCommit.
+3. Write runs/<ticketId>/ticket.md.
+4. Generate gold.patch using git diff baseCommit goldCommit.
+5. Run OpenCode solver in workspace/<ticketId>/.
+6. Save solver-output.txt.
+7. Capture candidate.patch using git diff.
+8. Save candidate.patch.
+9. If candidate.patch is empty, create automatic fail score.
+10. Build judge-input.md.
+11. Run OpenCode judge.
+12. Save judge-output.txt.
+13. Parse judge JSON.
+14. Save score.json.
+15. Return JudgeResult.
+```
+
+The workspace should be created from the original repo using git worktree.
+
+Example git command:
+
+```text
+git -C <repoPath> worktree add --detach <worktreePath> <baseCommit>
+```
+
+The gold patch should be generated from the original repo:
+
+```text
+git -C <repoPath> diff <baseCommit> <goldCommit>
+```
+
+The candidate patch should be generated from the solver workspace:
+
+```text
+git -C <workspacePath> diff
+```
+
+---
+
+### 1.15 Solver Prompt
+
+The solver prompt should be simple and consistent.
+
+```md
+You are working in a real codebase.
+
+Implement the Jira ticket below.
+
+Rules:
+- Read the repo freely.
+- Follow AGENTS.md and repo conventions.
+- Use existing patterns.
+- Make the smallest reasonable change.
+- Do not rewrite unrelated code.
+- Do not access the internet.
+- At the end, summarize what changed.
+
+Ticket:
+
+# <JIRA_ID>: <TITLE>
+
+<DESCRIPTION>
+```
+
+The solver should receive only:
+
+```text
+Jira title
+Jira description
+repo at baseCommit
+current AGENTS.md / OpenCode config / skills / MCPs
+```
+
+The solver should not receive:
+
+```text
+gold.patch
+goldCommit
+judge prompt
+score rubric
+previous scores
+previous candidate patches
+```
+
+This is important because the evaluation is supposed to test whether the current agent setup can solve the ticket from the same kind of information a real agent would receive.
+
+---
+
+### 1.16 Candidate Patch
+
+After the solver finishes, the system captures the generated diff.
+
+```text
+git -C <workspacePath> diff
+```
+
+The output is saved as:
+
+```text
+runs/<ticketId>/candidate.patch
+```
+
+This file represents the AI-generated PR.
+
+If the candidate patch is empty, the system should avoid running the judge and create an automatic fail score.
+
+Automatic empty patch score:
+
+```json
+{
+  "score": 0,
+  "verdict": "fail",
+  "solve_probability": 0,
+  "gold_alignment": 0,
+  "repo_pattern_quality": 0,
+  "minimality": 0,
+  "risk": 0,
+  "would_i_merge": false,
+  "summary": "The solver produced no code changes.",
+  "strengths": [],
+  "problems": ["No candidate patch was produced."]
+}
+```
+
+---
+
+### 1.17 Gold Patch
+
+The gold patch is the real merged PR diff.
+
+It is generated using:
+
+```text
+git -C <repoPath> diff <baseCommit> <goldCommit>
+```
+
+The output is saved as:
+
+```text
+runs/<ticketId>/gold.patch
+```
+
+The solver must not see this patch.
+
+The judge uses it as reference.
+
+The candidate does not need to match the gold patch exactly.
+The gold patch is used to understand the real intent, scope, and likely missing logic.
+
+---
+
+### 1.18 Judge Prompt
+
+The judge prompt should be strict and should request JSON only.
+
+```md
+You are judging an AI-generated code change.
+
+You will receive:
+
+1. Jira ticket
+2. Gold/reference patch from the real merged PR
+3. Candidate patch created by an AI agent
+
+Important:
+The candidate does not need to match the gold patch exactly.
+Different code is acceptable if it likely solves the same ticket.
+Use the gold patch as a reference for intent, scope, and likely missing pieces.
+
+Score the candidate from 0 to 100.
+
+Rubric:
+- 50 points: high chance of solving the ticket
+- 20 points: conceptually aligned with the gold PR
+- 15 points: follows existing repo patterns
+- 10 points: minimal and focused change
+- 5 points: low obvious regression risk
+
+Return only valid JSON:
+
+{
+  "score": 0,
+  "verdict": "fail | weak | partial | good | excellent",
+  "solve_probability": 0,
+  "gold_alignment": 0,
+  "repo_pattern_quality": 0,
+  "minimality": 0,
+  "risk": 0,
+  "would_i_merge": false,
+  "summary": "",
+  "strengths": [],
+  "problems": []
+}
+```
+
+Recommended interpretation:
+
+| Score Range | Verdict     |
+| ----------: | ----------- |
+|      `0-24` | `fail`      |
+|     `25-49` | `weak`      |
+|     `50-69` | `partial`   |
+|     `70-84` | `good`      |
+|    `85-100` | `excellent` |
+
+---
+
+### 1.19 Judge Output
+
+For each ticket, the parsed judge result is saved as:
+
+```text
+runs/<ticketId>/score.json
+```
+
+Example:
+
+```json
+{
+  "taskId": "JIRA-001",
+  "score": 78,
+  "verdict": "good",
+  "solve_probability": 40,
+  "gold_alignment": 15,
+  "repo_pattern_quality": 12,
+  "minimality": 8,
+  "risk": 3,
+  "would_i_merge": true,
+  "summary": "The candidate likely solves the main issue but misses one edge case handled by the real PR.",
+  "strengths": [
+    "Found the correct component",
+    "Used existing repo patterns",
+    "Made a focused change"
+  ],
+  "problems": [
+    "Did not update the shared helper used by another flow"
+  ]
+}
+```
+
+The parser should validate that:
+
+```text
+score is between 0 and 100
+verdict is one of the allowed verdicts
+all rubric fields are numbers
+would_i_merge is boolean
+summary is string
+strengths is string[]
+problems is string[]
+```
+
+---
+
+### 1.20 Report Generation
+
+At the end of `run-all`, or when manually running `report`, the system reads all `score.json` files and generates:
+
+```text
+reports/results.json
+reports/results.csv
+reports/summary.md
+```
+
+#### `reports/results.json`
+
+Example:
+
+```json
+{
+  "totalTickets": 50,
+  "completed": 50,
+  "medianScore": 76,
+  "averageScore": 72.4,
+  "wouldMergeRate": 0.58,
+  "verdictDistribution": {
+    "excellent": 8,
+    "good": 17,
+    "partial": 14,
+    "weak": 7,
+    "fail": 4
+  },
+  "tickets": []
+}
+```
+
+#### `reports/results.csv`
+
+Example:
+
+```csv
+taskId,title,score,verdict,wouldIMerge
+JIRA-001,Fix settings modal not saving theme,78,good,true
+JIRA-002,Fix export crash when item list is empty,64,partial,false
+JIRA-003,Add missing validation,87,excellent,true
+```
+
+#### `reports/summary.md`
+
+Example:
+
+```md
+# Agent Eval Summary
+
+## Executive Summary
+
+The current agent setup scored a median of 76 across 50 evaluated Jira tickets.
+
+Overall, the setup looks useful but inconsistent. It performs well on tickets where the target area is obvious from the Jira description, but it struggles when the fix requires discovering indirect repo conventions or shared helper logic.
+
+## Median Score
+
+76
+
+## Score Table
+
+| Ticket | Score | Verdict | Merge? |
+|---|---:|---|---|
+| JIRA-001 | 78 | good | yes |
+| JIRA-002 | 64 | partial | no |
+| JIRA-003 | 87 | excellent | yes |
+
+## Verdict Distribution
+
+| Verdict | Count |
+|---|---:|
+| Excellent | 8 |
+| Good | 17 |
+| Partial | 14 |
+| Weak | 7 |
+| Fail | 4 |
+
+## Common Strengths
+
+1. Finds the obvious implementation area.
+2. Usually follows local code style.
+3. Produces focused patches for simple tickets.
+4. Often makes changes that are conceptually close to the real PR.
+
+## Common Problems
+
+1. Misses shared helper functions.
+2. Makes a local fix instead of fixing the root pattern.
+3. Does not always notice related files.
+4. Sometimes implements the obvious behavior but misses edge cases from the real PR.
+5. Occasionally touches unrelated files.
+
+## Recommendation
+
+Improve AGENTS.md with:
+
+1. Important shared utilities and where they live.
+2. Common implementation layers.
+3. Feature ownership patterns.
+4. Files or folders that should usually not be edited.
+5. A final checklist before finishing a ticket.
+```
+
+---
+
+### 1.21 Median Score Logic
+
+The main score should be the median, not the average.
+
+Median is better here because:
+
+```text
+- One terrible run should not destroy the entire evaluation.
+- One excellent run should not make the setup look better than it is.
+- The benchmark is subjective and judge-based.
+- The score distribution may be noisy.
+```
+
+Median implementation:
+
+```ts
+function median(values: number[]): number {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 1) {
+    return sorted[middle];
+  }
+
+  return (sorted[middle - 1] + sorted[middle]) / 2;
+}
+```
+
+---
+
+### 1.22 Build Order
+
+#### Step 1: Create the project
+
+PowerShell:
+
+```powershell
+mkdir agent-eval
+cd agent-eval
+npm init
+npm add commander zod execa
+npm add -D typescript tsx @types/node
+```
+
+Do not pin package versions.
+
+---
+
+#### Step 2: Create config and schemas
+
+Create:
+
+```text
+eval.config.json
+tickets.json
+src/types/domain.ts
+src/config/schemas.ts
+src/config/ConfigLoader.ts
+```
+
+---
+
+#### Step 3: Create process and filesystem utilities
+
+Create:
+
+```text
+src/utils/ProcessRunner.ts
+src/utils/FileSystem.ts
+src/utils/Logger.ts
+src/utils/JsonUtils.ts
+```
+
+---
+
+#### Step 4: Create git services
+
+Create:
+
+```text
+src/git/GitService.ts
+src/git/WorkspaceService.ts
+src/git/PatchService.ts
+```
+
+---
+
+#### Step 5: Create ticket services
+
+Create:
+
+```text
+src/tickets/TicketLoader.ts
+src/tickets/TicketPromptBuilder.ts
+```
+
+---
+
+#### Step 6: Create OpenCode services
+
+Create:
+
+```text
+src/opencode/OpenCodeRunner.ts
+src/opencode/SolverRunner.ts
+src/opencode/JudgeRunner.ts
+```
+
+---
+
+#### Step 7: Create scoring services
+
+Create:
+
+```text
+src/scoring/JudgePromptBuilder.ts
+src/scoring/JudgeResultParser.ts
+src/scoring/ScoreAggregator.ts
+```
+
+---
+
+#### Step 8: Create run orchestration
+
+Create:
+
+```text
+src/runs/RunPaths.ts
+src/runs/RunRepository.ts
+src/runs/RunService.ts
+```
+
+---
+
+#### Step 9: Create report writers
+
+Create:
+
+```text
+src/reports/ReportGenerator.ts
+src/reports/MarkdownReportWriter.ts
+src/reports/CsvReportWriter.ts
+src/reports/JsonReportWriter.ts
+```
+
+---
+
+#### Step 10: Create CLI
+
+Create:
+
+```text
+src/cli.ts
+```
+
+---
+
+### 1.23 Main Service Pseudocode
+
+`RunService` is the central orchestrator.
+
+It should coordinate the flow, but not implement every detail itself.
+
+```ts
+export class RunService {
+  constructor(
+    private readonly workspaceService: WorkspaceService,
+    private readonly patchService: PatchService,
+    private readonly solverRunner: SolverRunner,
+    private readonly judgePromptBuilder: JudgePromptBuilder,
+    private readonly judgeRunner: JudgeRunner,
+    private readonly judgeResultParser: JudgeResultParser,
+    private readonly runRepository: RunRepository,
+  ) {}
+
+  async runTicket(ticket: JiraTicket): Promise<JudgeResult> {
+    await this.runRepository.createRunFolder(ticket.id);
+
+    const workspacePath = await this.workspaceService.prepare(ticket);
+
+    await this.runRepository.writeTicketMarkdown(ticket);
+
+    const goldPatch = await this.patchService.createGoldPatch(ticket);
+    await this.runRepository.writeGoldPatch(ticket.id, goldPatch);
+
+    const solverOutput = await this.solverRunner.solve(ticket, workspacePath);
+    await this.runRepository.writeSolverOutput(ticket.id, solverOutput);
+
+    const candidatePatch = await this.patchService.captureCandidatePatch(workspacePath);
+    await this.runRepository.writeCandidatePatch(ticket.id, candidatePatch);
+
+    if (this.patchService.isEmptyPatch(candidatePatch)) {
+      const emptyScore = createEmptyPatchScore(ticket.id);
+      await this.runRepository.writeScore(ticket.id, emptyScore);
+      return emptyScore;
+    }
+
+    const judgePrompt = this.judgePromptBuilder.build({
+      ticket,
+      goldPatch,
+      candidatePatch,
+    });
+
+    await this.runRepository.writeJudgeInput(ticket.id, judgePrompt);
+
+    const rawJudgeOutput = await this.judgeRunner.judge(judgePrompt, workspacePath);
+    await this.runRepository.writeJudgeOutput(ticket.id, rawJudgeOutput);
+
+    const score = this.judgeResultParser.parse(ticket.id, rawJudgeOutput);
+    await this.runRepository.writeScore(ticket.id, score);
+
+    return score;
+  }
+}
+```
+
+---
+
+### 1.24 OpenCode Runner Pseudocode
+
+`OpenCodeRunner` is a generic wrapper around `opencode run`.
+
+```ts
+export class OpenCodeRunner {
+  constructor(
+    private readonly config: EvalConfig,
+    private readonly processRunner: ProcessRunner,
+  ) {}
+
+  async run(input: {
+    cwd: string;
+    prompt: string;
+  }): Promise<string> {
+    const result = await this.processRunner.run(
+      this.config.opencodeCommand,
+      [
+        "run",
+        "--dir",
+        input.cwd,
+        "--model",
+        this.config.model,
+        "--format",
+        "text",
+        input.prompt,
+      ],
+      {
+        timeoutMs: this.config.timeoutMinutes * 60 * 1000,
+      },
+    );
+
+    return [
+      result.stdout,
+      result.stderr ? `\n\nSTDERR:\n${result.stderr}` : "",
+    ].join("");
+  }
+}
+```
+
+---
+
+### 1.25 Git Service Pseudocode
+
+`GitService` wraps git commands.
+
+```ts
+export class GitService {
+  constructor(private readonly processRunner: ProcessRunner) {}
+
+  async createWorktree(repoPath: string, worktreePath: string, commit: string): Promise<void> {
+    await this.processRunner.run("git", [
+      "-C",
+      repoPath,
+      "worktree",
+      "add",
+      "--detach",
+      worktreePath,
+      commit,
+    ]);
+  }
+
+  async removeWorktree(repoPath: string, worktreePath: string): Promise<void> {
+    await this.processRunner.run("git", [
+      "-C",
+      repoPath,
+      "worktree",
+      "remove",
+      "--force",
+      worktreePath,
+    ]);
+  }
+
+  async diff(cwd: string, from?: string, to?: string): Promise<string> {
+    const args = ["-C", cwd, "diff"];
+
+    if (from && to) {
+      args.push(from, to);
+    }
+
+    const result = await this.processRunner.run("git", args);
+    return result.stdout;
+  }
+
+  async resetHard(cwd: string): Promise<void> {
+    await this.processRunner.run("git", ["-C", cwd, "reset", "--hard"]);
+  }
+
+  async clean(cwd: string): Promise<void> {
+    await this.processRunner.run("git", ["-C", cwd, "clean", "-fd"]);
+  }
+}
+```
+
+---
+
+### 1.26 Design Rules
+
+#### Rule 1: No God File
+
+Do not put the full system in one `eval.ts`.
+
+Bad:
+
+```text
+src/eval.ts
+```
+
+Good:
+
+```text
+src/config/
+src/git/
+src/opencode/
+src/scoring/
+src/reports/
+src/runs/
+src/tickets/
+src/utils/
+```
+
+The CLI should parse commands.
+`RunService` should orchestrate.
+Specialized services should do actual work.
+
+---
+
+#### Rule 2: Solver Does Not See the Gold Patch
+
+The solver receives only:
+
+```text
+ticket title
+ticket description
+repo at baseCommit
+current repo-level agent setup
+```
+
+The solver does not receive:
+
+```text
+goldCommit
+gold.patch
+candidate comparison
+judge rubric
+previous scores
+```
+
+---
+
+#### Rule 3: Judge Can See Gold Patch
+
+The judge receives:
+
+```text
+ticket.md
+candidate.patch
+gold.patch
+rubric
+```
+
+The judge uses the gold patch as reference, not as an exact required implementation.
+
+---
+
+#### Rule 4: Empty Patch Is Auto-Fail
+
+If the solver produced no diff, score it immediately as fail.
+
+This saves judge calls and avoids pretending no-op work is meaningful.
+
+---
+
+#### Rule 5: Keep Prompt Stable
+
+The solver prompt and judge prompt should stay the same across all tickets.
+
+This makes the evaluation more consistent.
+
+---
+
+#### Rule 6: Store Everything Useful
+
+For every run, save:
+
+```text
+ticket.md
+gold.patch
+candidate.patch
+solver-output.txt
+judge-input.md
+judge-output.txt
+score.json
+```
+
+This makes it easy to manually inspect failures later.
+
+---
+
+#### Rule 7: Generate Reports from Saved Scores
+
+The report command should not rerun OpenCode.
+
+It should only read existing `score.json` files and regenerate:
+
+```text
+results.json
+results.csv
+summary.md
+```
+
+---
+
+### 1.27 Final Architecture Summary
+
+The system flow is:
+
+```text
+CLI
+  ↓
+ConfigLoader + TicketLoader
+  ↓
+RunService
+  ↓
+WorkspaceService + PatchService
+  ↓
+SolverRunner
+  ↓
+candidate.patch
+  ↓
+JudgePromptBuilder
+  ↓
+JudgeRunner
+  ↓
+JudgeResultParser
+  ↓
+score.json
+  ↓
+ScoreAggregator
+  ↓
+ReportGenerator
+  ↓
+summary.md + results.csv + results.json
+```
+
+This creates a simple but modular Windows-only TypeScript CLI application.
+
+It avoids a god file while still keeping the system small enough to build quickly.
+
+---
+
+## 2. Diagrams
+
+### 2.1 Class Diagram
+
+```mermaid
+classDiagram
+  class Cli {
+    +runAll(): Promise<void>
+    +run(ticketId: string): Promise<void>
+    +report(): Promise<void>
+    +clean(): Promise<void>
+  }
+
+  class ConfigLoader {
+    +load(): Promise<EvalConfig>
+  }
+
+  class TicketLoader {
+    +loadAll(): Promise<JiraTicket[]>
+    +loadById(ticketId: string): Promise<JiraTicket>
+  }
+
+  class TicketPromptBuilder {
+    +build(ticket: JiraTicket): string
+  }
+
+  class RunService {
+    +runTicket(ticket: JiraTicket): Promise<JudgeResult>
+    +runAll(tickets: JiraTicket[]): Promise<JudgeResult[]>
+  }
+
+  class RunPaths {
+    +forTicket(ticketId: string): TicketRunPaths
+  }
+
+  class RunRepository {
+    +createRunFolder(ticketId: string): Promise<void>
+    +writeTicketMarkdown(ticket: JiraTicket): Promise<void>
+    +writeGoldPatch(ticketId: string, patch: string): Promise<void>
+    +writeCandidatePatch(ticketId: string, patch: string): Promise<void>
+    +writeSolverOutput(ticketId: string, output: string): Promise<void>
+    +writeJudgeInput(ticketId: string, input: string): Promise<void>
+    +writeJudgeOutput(ticketId: string, output: string): Promise<void>
+    +writeScore(ticketId: string, score: JudgeResult): Promise<void>
+    +readScores(): Promise<JudgeResult[]>
+  }
+
+  class WorkspaceService {
+    +prepare(ticket: JiraTicket): Promise<string>
+    +cleanup(ticketId: string): Promise<void>
+  }
+
+  class GitService {
+    +createWorktree(repoPath: string, worktreePath: string, commit: string): Promise<void>
+    +removeWorktree(repoPath: string, worktreePath: string): Promise<void>
+    +diff(cwd: string, from?: string, to?: string): Promise<string>
+    +resetHard(cwd: string): Promise<void>
+    +clean(cwd: string): Promise<void>
+  }
+
+  class PatchService {
+    +createGoldPatch(ticket: JiraTicket): Promise<string>
+    +captureCandidatePatch(workspacePath: string): Promise<string>
+    +isEmptyPatch(patch: string): boolean
+  }
+
+  class OpenCodeRunner {
+    +run(input: OpenCodeRunInput): Promise<string>
+  }
+
+  class SolverRunner {
+    +solve(ticket: JiraTicket, workspacePath: string): Promise<string>
+  }
+
+  class JudgePromptBuilder {
+    +build(input: JudgePromptInput): string
+  }
+
+  class JudgeRunner {
+    +judge(prompt: string, workspacePath: string): Promise<string>
+  }
+
+  class JudgeResultParser {
+    +parse(taskId: string, raw: string): JudgeResult
+  }
+
+  class ScoreAggregator {
+    +aggregate(scores: JudgeResult[]): EvalSummary
+    +median(scores: number[]): number
+    +average(scores: number[]): number
+  }
+
+  class ReportGenerator {
+    +generate(scores: JudgeResult[]): ReportModel
+  }
+
+  class MarkdownReportWriter {
+    +write(report: ReportModel): Promise<void>
+  }
+
+  class CsvReportWriter {
+    +write(report: ReportModel): Promise<void>
+  }
+
+  class JsonReportWriter {
+    +write(report: ReportModel): Promise<void>
+  }
+
+  class ProcessRunner {
+    +run(command: string, args: string[], options?: ProcessOptions): Promise<ProcessResult>
+  }
+
+  class FileSystem {
+    +readText(path: string): Promise<string>
+    +writeText(path: string, content: string): Promise<void>
+    +readJson(path: string): Promise<unknown>
+    +writeJson(path: string, value: unknown): Promise<void>
+    +ensureDir(path: string): Promise<void>
+    +removeDir(path: string): Promise<void>
+  }
+
+  Cli --> ConfigLoader
+  Cli --> TicketLoader
+  Cli --> RunService
+  Cli --> ReportGenerator
+
+  RunService --> RunRepository
+  RunService --> WorkspaceService
+  RunService --> PatchService
+  RunService --> SolverRunner
+  RunService --> JudgePromptBuilder
+  RunService --> JudgeRunner
+  RunService --> JudgeResultParser
+
+  RunRepository --> RunPaths
+  RunRepository --> FileSystem
+
+  WorkspaceService --> GitService
+  PatchService --> GitService
+
+  GitService --> ProcessRunner
+
+  SolverRunner --> TicketPromptBuilder
+  SolverRunner --> OpenCodeRunner
+
+  JudgeRunner --> OpenCodeRunner
+
+  OpenCodeRunner --> ProcessRunner
+
+  ReportGenerator --> ScoreAggregator
+  ReportGenerator --> MarkdownReportWriter
+  ReportGenerator --> CsvReportWriter
+  ReportGenerator --> JsonReportWriter
+
+  MarkdownReportWriter --> FileSystem
+  CsvReportWriter --> FileSystem
+  JsonReportWriter --> FileSystem
+
+  ConfigLoader --> FileSystem
+  TicketLoader --> FileSystem
+```
+
+---
+
+### 2.2 High-Level System Flow Diagram
+
+```mermaid
+flowchart TD
+  A[Start CLI: npm run eval -- run-all] --> B[Load eval.config.json]
+  B --> C[Validate and normalize config paths]
+  C --> D[Load tickets.json]
+  D --> E[Validate Jira tickets]
+  E --> F{For each Jira ticket}
+
+  F --> G[Create run folder]
+  G --> H[Create clean git worktree at baseCommit]
+  H --> I[Write ticket.md]
+  I --> J[Generate gold.patch from baseCommit to goldCommit]
+  J --> K[Build solver prompt]
+  K --> L[Run OpenCode solver]
+  L --> M[Save solver-output.txt]
+  M --> N[Capture git diff as candidate.patch]
+
+  N --> O{Candidate patch empty?}
+  O -->|Yes| P[Create automatic fail score]
+  O -->|No| Q[Build judge prompt]
+
+  Q --> R[Run OpenCode judge]
+  R --> S[Save judge-output.txt]
+  S --> T[Parse and validate judge JSON]
+  T --> U[Save score.json]
+  P --> U
+
+  U --> V[Move to next ticket]
+  V --> F
+
+  F -->|All tickets complete| W[Read all score.json files]
+  W --> X[Aggregate scores]
+  X --> Y[Calculate median score]
+  Y --> Z[Generate results.json]
+  Z --> AA[Generate results.csv]
+  AA --> AB[Generate summary.md]
+  AB --> AC[Done]
+```
+
+---
+
+### 2.3 Single Ticket Flow Diagram
+
+```mermaid
+flowchart TD
+  A[Command: npm run eval -- run JIRA-001] --> B[Load config]
+  B --> C[Load ticket JIRA-001]
+  C --> D[Create runs/JIRA-001]
+  D --> E[Prepare workspace/JIRA-001]
+  E --> F[Checkout baseCommit]
+  F --> G[Write ticket.md]
+  G --> H[Generate gold.patch]
+  H --> I[Build solver prompt]
+  I --> J[Run OpenCode solver]
+  J --> K[Save solver-output.txt]
+  K --> L[Capture candidate.patch]
+  L --> M{Patch empty?}
+  M -->|Yes| N[Write automatic fail score.json]
+  M -->|No| O[Build judge-input.md]
+  O --> P[Run OpenCode judge]
+  P --> Q[Save judge-output.txt]
+  Q --> R[Parse judge JSON]
+  R --> S[Save score.json]
+  N --> T[Done]
+  S --> T[Done]
+```
+
+---
+
+### 2.4 Sequence Diagram: Run All Tickets
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant CLI
+  participant ConfigLoader
+  participant TicketLoader
+  participant RunService
+  participant WorkspaceService
+  participant SolverRunner
+  participant JudgeRunner
+  participant ReportGenerator
+
+  User->>CLI: npm run eval -- run-all
+
+  CLI->>ConfigLoader: load()
+  ConfigLoader-->>CLI: EvalConfig
+
+  CLI->>TicketLoader: loadAll()
+  TicketLoader-->>CLI: JiraTicket[]
+
+  loop each ticket
+    CLI->>RunService: runTicket(ticket)
+
+    RunService->>WorkspaceService: prepare(ticket)
+    WorkspaceService-->>RunService: workspacePath
+
+    RunService->>SolverRunner: solve(ticket, workspacePath)
+    SolverRunner-->>RunService: solverOutput
+
+    RunService->>RunService: capture candidate.patch
+    RunService->>RunService: build judge prompt
+
+    RunService->>JudgeRunner: judge(prompt, workspacePath)
+    JudgeRunner-->>RunService: rawJudgeOutput
+
+    RunService->>RunService: parse and save score.json
+    RunService-->>CLI: JudgeResult
+  end
+
+  CLI->>ReportGenerator: generate(scores)
+  ReportGenerator-->>CLI: reports written
+
+  CLI-->>User: Done + median score
+```
+
+---
+
+### 2.5 Sequence Diagram: One Ticket Internals
+
+```mermaid
+sequenceDiagram
+  participant RunService
+  participant RunRepository
+  participant WorkspaceService
+  participant GitService
+  participant PatchService
+  participant SolverRunner
+  participant OpenCodeRunner
+  participant JudgePromptBuilder
+  participant JudgeRunner
+  participant JudgeResultParser
+
+  RunService->>RunRepository: createRunFolder(ticket.id)
+
+  RunService->>WorkspaceService: prepare(ticket)
+  WorkspaceService->>GitService: createWorktree(repoPath, worktreePath, baseCommit)
+  GitService-->>WorkspaceService: worktree ready
+  WorkspaceService-->>RunService: worktreePath
+
+  RunService->>RunRepository: writeTicketMarkdown(ticket)
+
+  RunService->>PatchService: createGoldPatch(ticket)
+  PatchService->>GitService: diff(repoPath, baseCommit, goldCommit)
+  GitService-->>PatchService: gold patch
+  PatchService-->>RunService: goldPatch
+  RunService->>RunRepository: writeGoldPatch(ticket.id, goldPatch)
+
+  RunService->>SolverRunner: solve(ticket, worktreePath)
+  SolverRunner->>OpenCodeRunner: run(solverPrompt, worktreePath)
+  OpenCodeRunner-->>SolverRunner: solver output
+  SolverRunner-->>RunService: solver output
+  RunService->>RunRepository: writeSolverOutput(ticket.id, solverOutput)
+
+  RunService->>PatchService: captureCandidatePatch(worktreePath)
+  PatchService->>GitService: diff(worktreePath)
+  GitService-->>PatchService: candidate patch
+  PatchService-->>RunService: candidatePatch
+  RunService->>RunRepository: writeCandidatePatch(ticket.id, candidatePatch)
+
+  alt candidate patch is empty
+    RunService->>RunRepository: writeScore(ticket.id, emptyFailScore)
+  else candidate patch is not empty
+    RunService->>JudgePromptBuilder: build(ticket, goldPatch, candidatePatch)
+    JudgePromptBuilder-->>RunService: judgePrompt
+    RunService->>RunRepository: writeJudgeInput(ticket.id, judgePrompt)
+
+    RunService->>JudgeRunner: judge(judgePrompt, worktreePath)
+    JudgeRunner->>OpenCodeRunner: run(judgePrompt, worktreePath)
+    OpenCodeRunner-->>JudgeRunner: rawJudgeOutput
+    JudgeRunner-->>RunService: rawJudgeOutput
+
+    RunService->>RunRepository: writeJudgeOutput(ticket.id, rawJudgeOutput)
+    RunService->>JudgeResultParser: parse(ticket.id, rawJudgeOutput)
+    JudgeResultParser-->>RunService: JudgeResult
+    RunService->>RunRepository: writeScore(ticket.id, score)
+  end
+```
+
+---
+
+### 2.6 Sequence Diagram: Report Generation
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant CLI
+  participant RunRepository
+  participant ReportGenerator
+  participant ScoreAggregator
+  participant MarkdownReportWriter
+  participant CsvReportWriter
+  participant JsonReportWriter
+
+  User->>CLI: npm run eval -- report
+
+  CLI->>RunRepository: readScores()
+  RunRepository-->>CLI: JudgeResult[]
+
+  CLI->>ReportGenerator: generate(scores)
+
+  ReportGenerator->>ScoreAggregator: aggregate(scores)
+  ScoreAggregator-->>ReportGenerator: EvalSummary
+
+  ReportGenerator->>JsonReportWriter: write(report)
+  JsonReportWriter-->>ReportGenerator: results.json written
+
+  ReportGenerator->>CsvReportWriter: write(report)
+  CsvReportWriter-->>ReportGenerator: results.csv written
+
+  ReportGenerator->>MarkdownReportWriter: write(report)
+  MarkdownReportWriter-->>ReportGenerator: summary.md written
+
+  ReportGenerator-->>CLI: report paths
+  CLI-->>User: Reports created
+```
+
+---
+
+### 2.7 Component Diagram
+
+```mermaid
+flowchart LR
+  subgraph CLI_Layer[CLI Layer]
+    CLI[src/cli.ts]
+  end
+
+  subgraph Input_Layer[Input Layer]
+    Config[ConfigLoader]
+    Tickets[TicketLoader]
+  end
+
+  subgraph Run_Layer[Run Orchestration]
+    RunService[RunService]
+    RunRepo[RunRepository]
+    RunPaths[RunPaths]
+  end
+
+  subgraph Git_Layer[Git Layer]
+    Workspace[WorkspaceService]
+    Git[GitService]
+    Patch[PatchService]
+  end
+
+  subgraph OpenCode_Layer[OpenCode Layer]
+    OpenCode[OpenCodeRunner]
+    Solver[SolverRunner]
+    Judge[JudgeRunner]
+  end
+
+  subgraph Scoring_Layer[Scoring Layer]
+    JudgePrompt[JudgePromptBuilder]
+    Parser[JudgeResultParser]
+    Aggregator[ScoreAggregator]
+  end
+
+  subgraph Report_Layer[Report Layer]
+    ReportGen[ReportGenerator]
+    MD[MarkdownReportWriter]
+    CSV[CsvReportWriter]
+    JSON[JsonReportWriter]
+  end
+
+  subgraph Utils[Utilities]
+    FS[FileSystem]
+    Process[ProcessRunner]
+    Logger[Logger]
+  end
+
+  CLI --> Config
+  CLI --> Tickets
+  CLI --> RunService
+  CLI --> ReportGen
+
+  RunService --> Workspace
+  RunService --> Patch
+  RunService --> Solver
+  RunService --> JudgePrompt
+  RunService --> Judge
+  RunService --> Parser
+  RunService --> RunRepo
+
+  RunRepo --> RunPaths
+  RunRepo --> FS
+
+  Workspace --> Git
+  Patch --> Git
+  Git --> Process
+
+  Solver --> OpenCode
+  Judge --> OpenCode
+  OpenCode --> Process
+
+  ReportGen --> Aggregator
+  ReportGen --> MD
+  ReportGen --> CSV
+  ReportGen --> JSON
+
+  MD --> FS
+  CSV --> FS
+  JSON --> FS
+  Config --> FS
+  Tickets --> FS
+```
+
+---
+
+### 2.8 Artifact Lifecycle Diagram
+
+```mermaid
+flowchart TD
+  A[tickets.json] --> B[TicketLoader]
+  B --> C[JiraTicket]
+
+  C --> D[TicketPromptBuilder]
+  D --> E[Solver Prompt]
+
+  C --> F[PatchService]
+  F --> G[gold.patch]
+
+  E --> H[OpenCode Solver]
+  H --> I[Repo Changes]
+  I --> J[candidate.patch]
+
+  C --> K[JudgePromptBuilder]
+  G --> K
+  J --> K
+  K --> L[judge-input.md]
+
+  L --> M[OpenCode Judge]
+  M --> N[judge-output.txt]
+
+  N --> O[JudgeResultParser]
+  O --> P[score.json]
+
+  P --> Q[ScoreAggregator]
+  Q --> R[results.json]
+  Q --> S[results.csv]
+  Q --> T[summary.md]
+```
+
+---
+
+### 2.9 Main Application Flow Summary
+
+```mermaid
+flowchart TD
+  A[CLI Command] --> B{Command Type}
+
+  B -->|run-all| C[Load all tickets]
+  C --> D[Run each ticket]
+  D --> E[Generate final report]
+
+  B -->|run ticketId| F[Load one ticket]
+  F --> G[Run one ticket]
+  G --> H[Save score]
+
+  B -->|report| I[Read existing scores]
+  I --> J[Generate reports]
+
+  B -->|clean| K[Delete workspace folders]
+  K --> L[Done]
+```

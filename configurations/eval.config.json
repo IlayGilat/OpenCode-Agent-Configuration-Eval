@@ -1,0 +1,11 @@
+{
+  "repoPath": "../sample-repo",
+  "runsPath": "../runs",
+  "configuredRunName": null,
+  "gitCommand": "C:/Users/ilaygil/AppData/Local/Programs/Git/cmd/git.exe",
+  "opencodeCommand": "opencode",
+  "model": "your-provider/your-model",
+  "timeoutMinutes": 60,
+  "solverPromptPath": "./prompts/solver.md",
+  "judgePromptPath": "./prompts/judge.md"
+}
