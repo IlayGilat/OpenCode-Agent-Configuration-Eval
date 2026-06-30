@@ -1,4 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin";
+import * as fs from "fs";
+import * as path from "path";
 
 const usage = {
   chat_history: 0,
@@ -6,6 +8,13 @@ const usage = {
   file_reads: 0,
   system: 0
 };
+
+process.on('exit', () => {
+    fs.writeFileSync(
+        path.join(process.cwd(), '.opencode', 'context_usage_summary.json'),
+        JSON.stringify(usage, null, 2)
+    );
+});
 
 export default (async () => {
   return {
