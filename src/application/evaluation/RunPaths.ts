@@ -23,6 +23,7 @@ export class RunPaths {
       solverStderrLogPath: path.join(logsDir, "solver-stderr.log"),
       judgeInputPath: path.join(runDir, "judge-input.md"),
       judgeOutputPath: path.join(runDir, "judge-output.txt"),
+      opencodeLogPath: path.join(runDir, "opencode.log"),
       judgeRawLogPath: path.join(logsDir, "judge-raw.log"),
       judgeStdoutLogPath: path.join(logsDir, "judge-stdout.log"),
       judgeStderrLogPath: path.join(logsDir, "judge-stderr.log"),

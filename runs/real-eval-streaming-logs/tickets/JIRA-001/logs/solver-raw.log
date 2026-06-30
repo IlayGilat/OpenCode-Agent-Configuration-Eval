@@ -1,9 +1,0 @@
-timestamp=2026-06-29T13:53:43.409Z level=INFO run=3c77f751 message="creating instance" directory="C:\\Users\\ilaygil\\Desktop\\OpenCode_Agent_Bench\\runs\\real-eval-streaming-logs\\tickets\\JIRA-001\\workspace"
-timestamp=2026-06-29T13:53:43.412Z level=INFO run=3c77f751 message=fromDirectory directory="C:\\Users\\ilaygil\\Desktop\\OpenCode_Agent_Bench\\runs\\real-eval-streaming-logs\\tickets\\JIRA-001\\workspace"
-timestamp=2026-06-29T13:53:44.177Z level=INFO run=3c77f751 message=bootstrapping directory="C:\\Users\\ilaygil\\Desktop\\OpenCode_Agent_Bench\\runs\\real-eval-streaming-logs\\tickets\\JIRA-001\\workspace"
-timestamp=2026-06-29T13:53:44.184Z level=INFO run=3c77f751 message=loading path="C:\\Users\\ilaygil\\.config\\opencode\\config.json"
-timestamp=2026-06-29T13:53:44.185Z level=INFO run=3c77f751 message=loading path="C:\\Users\\ilaygil\\.config\\opencode\\opencode.json"
-timestamp=2026-06-29T13:53:44.185Z level=INFO run=3c77f751 message=loading path="C:\\Users\\ilaygil\\.config\\opencode\\opencode.jsonc"
-timestamp=2026-06-29T13:53:44.293Z level=INFO run=3c77f751 message="all LSPs are disabled"
-timestamp=2026-06-29T13:53:44.294Z level=INFO run=3c77f751 message="all formatters are disabled"
-timestamp=2026-06-29T13:53:44.294Z level=INFO run=3c77f751 message=init

@@ -37,6 +37,7 @@ export type TicketRunPaths = {
   solverStderrLogPath: string;
   judgeInputPath: string;
   judgeOutputPath: string;
+  opencodeLogPath: string;
   judgeRawLogPath: string;
   judgeStdoutLogPath: string;
   judgeStderrLogPath: string;
@@ -117,4 +118,6 @@ export type OpenCodeLogPaths = {
   rawPath: string;
   stdoutPath: string;
   stderrPath: string;
+  transcriptPath: string;
+  phase: "solver" | "judge";
 };

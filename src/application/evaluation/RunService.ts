@@ -49,6 +49,8 @@ export class RunService {
         rawPath: runPaths.solverRawLogPath,
         stdoutPath: runPaths.solverStdoutLogPath,
         stderrPath: runPaths.solverStderrLogPath,
+        transcriptPath: runPaths.opencodeLogPath,
+        phase: "solver",
       }),
       "solver",
     );
@@ -79,6 +81,8 @@ export class RunService {
         rawPath: runPaths.judgeRawLogPath,
         stdoutPath: runPaths.judgeStdoutLogPath,
         stderrPath: runPaths.judgeStderrLogPath,
+        transcriptPath: runPaths.opencodeLogPath,
+        phase: "judge",
       }),
       "judge",
     );
