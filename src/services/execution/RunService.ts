@@ -1,13 +1,13 @@
 import type { JudgeResult } from "../../interfaces/scoring/interfaces.js";
 import type { JiraTicket } from "../../interfaces/tickets/interfaces.js";
-import { OpenCodeTaskRunner } from "../opencode/OpenCodeTaskRunner.js";
-import { PatchService } from "../workspace/PatchService.js";
-import { WorkspaceService } from "../workspace/WorkspaceService.js";
-import { JudgePromptBuilder } from "../scoring/JudgePromptBuilder.js";
-import { JudgeResultParser } from "../scoring/JudgeResultParser.js";
-import { createEmptyPatchScore } from "../scoring/createEmptyPatchScore.js";
+import { OpenCodeTaskRunner } from "./opencode/OpenCodeTaskRunner.js";
+import { ProcessRunError } from "../platform/ProcessRunner.js";
+import { PatchService } from "../preparation/workspace/PatchService.js";
+import { WorkspaceService } from "../preparation/workspace/WorkspaceService.js";
+import { JudgePromptBuilder } from "../review/JudgePromptBuilder.js";
+import { JudgeResultParser } from "../review/JudgeResultParser.js";
+import { createEmptyPatchScore } from "../review/createEmptyPatchScore.js";
 import { RunRepository } from "./RunRepository.js";
-import { ProcessRunError } from "../system/ProcessRunner.js";
 
 type Logger = Pick<typeof console, "info" | "warn" | "error">;
 

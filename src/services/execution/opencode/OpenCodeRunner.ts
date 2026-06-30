@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { EvalConfig } from "../../interfaces/config/interfaces.js";
-import type { OpenCodeLogPaths, OpenCodeRunResult } from "../../interfaces/opencode/interfaces.js";
-import { ProcessRunner } from "../system/ProcessRunner.js";
+import type { EvalConfig } from "../../../interfaces/config/interfaces.js";
+import type { OpenCodeLogPaths, OpenCodeRunResult } from "../../../interfaces/opencode/interfaces.js";
+import { ProcessRunner } from "../../platform/ProcessRunner.js";
 
 export class OpenCodeRunner {
   private static readonly placeholderModel = "your-provider/your-model";

@@ -4,7 +4,7 @@ import type { JiraTicket } from "../../interfaces/tickets/interfaces.js";
 import { CsvReportWriter } from "./writers/CsvReportWriter.js";
 import { JsonReportWriter } from "./writers/JsonReportWriter.js";
 import { MarkdownReportWriter } from "./writers/MarkdownReportWriter.js";
-import { ScoreAggregator } from "../scoring/ScoreAggregator.js";
+import { ScoreAggregator } from "./ScoreAggregator.js";
 
 export class ReportGenerator {
   constructor(

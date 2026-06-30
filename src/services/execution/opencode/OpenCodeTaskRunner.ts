@@ -1,6 +1,6 @@
-import type { OpenCodeLogPaths, OpenCodeRunResult } from "../../interfaces/opencode/interfaces.js";
-import type { JiraTicket } from "../../interfaces/tickets/interfaces.js";
-import { TicketPromptBuilder } from "../tickets/TicketPromptBuilder.js";
+import type { OpenCodeLogPaths, OpenCodeRunResult } from "../../../interfaces/opencode/interfaces.js";
+import type { JiraTicket } from "../../../interfaces/tickets/interfaces.js";
+import { TicketPromptBuilder } from "../../preparation/tickets/TicketPromptBuilder.js";
 import { OpenCodeRunner } from "./OpenCodeRunner.js";
 
 export class OpenCodeTaskRunner {

@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import type { EvalConfig } from "../../interfaces/config/interfaces.js";
 import type { ActiveRun } from "../../interfaces/evaluation/interfaces.js";
-import { FileSystem } from "../system/FileSystem.js";
+import { FileSystem } from "../platform/FileSystem.js";
 
 export class RunContext {
   constructor(

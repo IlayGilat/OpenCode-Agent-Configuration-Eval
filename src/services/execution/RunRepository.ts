@@ -3,8 +3,8 @@ import type { OpenCodeRunResult } from "../../interfaces/opencode/interfaces.js"
 import type { JudgeResult } from "../../interfaces/scoring/interfaces.js";
 import { judgeResultSchema } from "../../interfaces/scoring/schemas.js";
 import type { JiraTicket } from "../../interfaces/tickets/interfaces.js";
-import { TicketPromptBuilder } from "../tickets/TicketPromptBuilder.js";
-import { FileSystem } from "../system/FileSystem.js";
+import { FileSystem } from "../platform/FileSystem.js";
+import { TicketPromptBuilder } from "../preparation/tickets/TicketPromptBuilder.js";
 import { RunPaths } from "./RunPaths.js";
 
 export class RunRepository {

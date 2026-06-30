@@ -1,5 +1,5 @@
-import type { EvalConfig } from "../../interfaces/config/interfaces.js";
-import type { JiraTicket } from "../../interfaces/tickets/interfaces.js";
+import type { EvalConfig } from "../../../interfaces/config/interfaces.js";
+import type { JiraTicket } from "../../../interfaces/tickets/interfaces.js";
 import { GitService } from "./GitService.js";
 
 export class PatchService {

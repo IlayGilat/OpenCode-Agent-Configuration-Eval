@@ -1,4 +1,4 @@
-import { ProcessRunner } from "../system/ProcessRunner.js";
+import { ProcessRunner } from "../../platform/ProcessRunner.js";
 
 export class GitService {
   constructor(
