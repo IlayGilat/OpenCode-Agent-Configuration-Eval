@@ -22,6 +22,7 @@ export class ProcessRunner {
         timeout: options.timeoutMs,
         reject: true,
         all: true,
+        stdin: "ignore",
       });
 
       subprocess.stdout?.on("data", (chunk: Buffer) => {

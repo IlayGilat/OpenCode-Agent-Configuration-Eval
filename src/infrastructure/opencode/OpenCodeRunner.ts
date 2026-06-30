@@ -25,11 +25,12 @@ export class OpenCodeRunner {
       "--format",
       "default",
       "--print-logs",
+      "--dangerously-skip-permissions",
       "--model",
       this.config.model,
     ];
 
-    args.push(input.prompt);
+    args.push(this.normalizePromptForCli(input.prompt));
 
     const streams = input.logs ? this.openLogStreams(input.logs) : undefined;
 
@@ -96,5 +97,9 @@ export class OpenCodeRunner {
     if (target === "raw") {
       streams.transcript.write(chunk);
     }
+  }
+
+  private normalizePromptForCli(prompt: string): string {
+    return prompt.replace(/\s+/g, " ").trim();
   }
 }

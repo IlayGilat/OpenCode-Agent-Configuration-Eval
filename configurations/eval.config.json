@@ -5,7 +5,7 @@
   "gitCommand": "C:/Users/ilaygil/AppData/Local/Programs/Git/cmd/git.exe",
   "opencodeCommand": "opencode",
   "model": "opencode/deepseek-v4-flash-free",
-  "timeoutMinutes": 60,
+  "timeoutMinutes": 1,
   "solverPromptPath": "./prompts/solver.md",
   "judgePromptPath": "./prompts/judge.md"
 }
