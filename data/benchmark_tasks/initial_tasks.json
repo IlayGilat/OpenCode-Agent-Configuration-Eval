@@ -1,0 +1,29 @@
+[
+  {
+    "task_id": "T001",
+    "description": "Create a file named 'hello.txt' with the content 'Hello, World!'",
+    "expected_outcome_type": "file_modification",
+    "expected_outcome_details": "File 'hello.txt' exists with content 'Hello, World!'",
+    "success_criteria": "File 'hello.txt' created and verified.",
+    "skill_applicability": ["None"],
+    "context_requirements": ["Current directory"]
+  },
+  {
+    "task_id": "T002",
+    "description": "List all python files in the current directory.",
+    "expected_outcome_type": "tool_call",
+    "expected_outcome_details": "{\"tool\": \"glob\", \"args\": {\"pattern\": \"*.py\"}}",
+    "success_criteria": "Returns a list of all .py files.",
+    "skill_applicability": ["None"],
+    "context_requirements": ["Current directory"]
+  },
+  {
+    "task_id": "T003",
+    "description": "Brainstorm potential improvements for the project's README file.",
+    "expected_outcome_type": "text_response",
+    "expected_outcome_details": "Response containing suggestions for README improvements.",
+    "success_criteria": "Agent provides at least 3 reasonable improvements.",
+    "skill_applicability": ["brainstorming"],
+    "context_requirements": ["README.md existence"]
+  }
+]
