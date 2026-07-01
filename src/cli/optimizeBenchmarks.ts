@@ -19,7 +19,17 @@ for (const variant of variants) {
   
   const app = await createApp({ runName: variant.name });
   const tickets = await app.ticketLoader.loadAll();
-  const scores = await app.benchmarkRunWorkflow.runAll(tickets);
+  const allResults = [];
   
-  console.log(`Variant ${variant.name} finished. Scores:`, scores);
+  for (const ticket of tickets) {
+      try {
+          const score = await app.benchmarkRunWorkflow.run(ticket);
+          allResults.push({ ticketId: ticket.id, score });
+      } catch (e) {
+          console.error(`Ticket ${ticket.id} failed, skipping.`);
+      }
+  }
+  
+  await fs.appendFile("benchmark-results.json", JSON.stringify({ variant: variant.name, results: allResults }) + "\n");
+  console.log(`Variant ${variant.name} finished.`);
 }
