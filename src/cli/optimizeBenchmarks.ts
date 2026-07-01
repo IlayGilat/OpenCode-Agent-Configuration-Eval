@@ -1,11 +1,16 @@
 import { createApp } from "../composition/createApp.js";
+import { updateMeasurement } from "../utils/measurementSwapper.js";
+import fs from "fs/promises";
 
 const variants = [
   { name: "default", apply: async () => {} },
-  { name: "aggressive", apply: async () => { 
-      // Implementation placeholder for measurement swapping logic
-      console.log("Applying aggressive measurement variant...");
-  } }
+  { 
+      name: "constraint-heavy", 
+      apply: async () => {
+          const content = await fs.readFile(".opencode/agents/build-constraint-heavy.md", "utf-8");
+          await updateMeasurement(".opencode/agents/build.md", content);
+      } 
+  }
 ];
 
 for (const variant of variants) {
