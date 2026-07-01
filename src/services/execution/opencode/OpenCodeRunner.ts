@@ -31,7 +31,12 @@ export class OpenCodeRunner {
       this.config.model,
     ];
 
-    args.push(this.normalizePromptForCli(input.prompt));
+    if (input.logs) {
+      this.writePromptFile(input.logs.promptPath, input.prompt);
+      args.push(this.shortMessageForPhase(input.logs.phase), "--file", input.logs.promptPath);
+    } else {
+      args.push(this.normalizePromptForCli(input.prompt));
+    }
 
     const streams = input.logs ? this.openLogStreams(input.logs) : undefined;
 
@@ -40,7 +45,7 @@ export class OpenCodeRunner {
         this.config.opencodeCommand,
         args,
         {
-          timeoutMs: this.config.timeoutMinutes * 60 * 1000,
+          timeoutMs: this.config.timeoutMs,
           onStdout: streams ? (chunk) => this.writeChunk(streams, "stdout", chunk) : undefined,
           onStderr: streams ? (chunk) => this.writeChunk(streams, "stderr", chunk) : undefined,
           onRawOutput: streams ? (chunk) => this.writeChunk(streams, "raw", chunk) : undefined,
@@ -64,6 +69,7 @@ export class OpenCodeRunner {
     stdout: fs.WriteStream;
     stderr: fs.WriteStream;
     transcript: fs.WriteStream;
+    onConsoleOutput?: (chunk: string) => void;
   } {
     fs.mkdirSync(path.dirname(paths.rawPath), { recursive: true });
     fs.mkdirSync(path.dirname(paths.transcriptPath), { recursive: true });
@@ -80,6 +86,7 @@ export class OpenCodeRunner {
       stdout: fs.createWriteStream(paths.stdoutPath, { flags: "w" }),
       stderr: fs.createWriteStream(paths.stderrPath, { flags: "w" }),
       transcript,
+      onConsoleOutput: paths.onConsoleOutput,
     };
   }
 
@@ -89,6 +96,7 @@ export class OpenCodeRunner {
       stdout: fs.WriteStream;
       stderr: fs.WriteStream;
       transcript: fs.WriteStream;
+      onConsoleOutput?: (chunk: string) => void;
     },
     target: "raw" | "stdout" | "stderr",
     chunk: string,
@@ -97,7 +105,21 @@ export class OpenCodeRunner {
 
     if (target === "raw") {
       streams.transcript.write(chunk);
+      streams.onConsoleOutput?.(chunk);
     }
+  }
+
+  private writePromptFile(promptPath: string, prompt: string): void {
+    fs.mkdirSync(path.dirname(promptPath), { recursive: true });
+    fs.writeFileSync(promptPath, `${prompt.trimEnd()}\n`, "utf8");
+  }
+
+  private shortMessageForPhase(phase: OpenCodeLogPaths["phase"]): string {
+    if (phase === "judge") {
+      return "Read the attached judge prompt file and return only the requested JSON.";
+    }
+
+    return "Read the attached ticket prompt file and implement the requested change.";
   }
 
   private normalizePromptForCli(prompt: string): string {

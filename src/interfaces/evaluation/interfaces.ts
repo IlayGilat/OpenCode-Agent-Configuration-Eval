@@ -7,18 +7,26 @@ export type ActiveRun = {
 
 export type TicketRunPaths = {
   runDir: string;
+  inputDir: string;
+  patchesDir: string;
+  outputDir: string;
+  resultDir: string;
+  solverLogsDir: string;
+  judgeLogsDir: string;
   ticketMarkdownPath: string;
+  solverPromptPath: string;
   goldPatchPath: string;
   candidatePatchPath: string;
   solverOutputPath: string;
   solverRawLogPath: string;
   solverStdoutLogPath: string;
   solverStderrLogPath: string;
-  judgeInputPath: string;
+  judgePromptPath: string;
   judgeOutputPath: string;
   opencodeLogPath: string;
   judgeRawLogPath: string;
   judgeStdoutLogPath: string;
   judgeStderrLogPath: string;
   scorePath: string;
+  failurePath: string;
 };

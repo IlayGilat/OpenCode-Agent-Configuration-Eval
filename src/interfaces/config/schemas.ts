@@ -6,7 +6,7 @@ export const evalConfigSchema = z.object({
   configuredRunName: z.string().min(1).nullable().optional().default(null),
   opencodeCommand: z.string().min(1),
   model: z.string().min(1),
-  timeoutMinutes: z.number().int().positive(),
+  timeoutMs: z.number().int().positive(),
   solverPromptPath: z.string().min(1),
   judgePromptPath: z.string().min(1),
 });

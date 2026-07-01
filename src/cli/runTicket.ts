@@ -1,7 +1,7 @@
 import { createApp } from "../composition/createApp.js";
 import { runCommand } from "./runCommand.js";
 
-runCommand(async () => {
+await runCommand(async () => {
   const [ticketId, runName] = process.argv.slice(2);
 
   if (!ticketId) {

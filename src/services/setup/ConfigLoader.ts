@@ -10,7 +10,7 @@ export class ConfigLoader {
     runsPath: "./runs",
     opencodeCommand: "opencode",
     model: "opencode/deepseek-v4-flash-free",
-    timeoutMinutes: 1,
+    timeoutMs: 60 * 60 * 1000,
     solverPromptPath: "src/prompts/solver.md",
     judgePromptPath: "src/prompts/judge.md",
   };
@@ -30,6 +30,7 @@ export class ConfigLoader {
       runsPath: this.envValueOrDefault(process.env.RUNS_PATH, ConfigLoader.defaults.runsPath),
       configuredRunName: this.optionalEnvValue(process.env.CONFIGURED_RUN_NAME),
       model: this.envValueOrDefault(process.env.MODEL, ConfigLoader.defaults.model),
+      timeoutMs: this.numberEnvValueOrDefault(process.env.TIMEOUT_MS, ConfigLoader.defaults.timeoutMs),
     });
 
     const config: EvalConfig = {
@@ -62,6 +63,22 @@ export class ConfigLoader {
 
   private envValueOrDefault(value: string | undefined, defaultValue: string): string {
     return value?.trim() || defaultValue;
+  }
+
+  private numberEnvValueOrDefault(value: string | undefined, defaultValue: number): number {
+    const trimmed = value?.trim();
+
+    if (!trimmed) {
+      return defaultValue;
+    }
+
+    const parsed = Number(trimmed);
+
+    if (!Number.isFinite(parsed)) {
+      throw new Error(`TIMEOUT_MS must be a finite number, received: ${trimmed}`);
+    }
+
+    return parsed;
   }
 
   private resolveConfigPath(configDir: string, configuredPath: string): string {

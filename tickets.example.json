@@ -1,0 +1,16 @@
+[
+  {
+    "id": "PROJECT-001",
+    "title": "Short, human-readable ticket title",
+    "description": "Describe the bug or feature request clearly. Include the expected behavior, the current behavior, important reproduction steps, and any constraints the agent should preserve.",
+    "baseCommit": "0123456789abcdef0123456789abcdef01234567",
+    "goldCommit": "fedcba9876543210fedcba9876543210fedcba98"
+  },
+  {
+    "id": "PROJECT-002",
+    "title": "Another benchmark task",
+    "description": "Each ticket should point to a base commit where the agent starts and a gold commit containing the reference solution used for judging.",
+    "baseCommit": "1111111111111111111111111111111111111111",
+    "goldCommit": "2222222222222222222222222222222222222222"
+  }
+]

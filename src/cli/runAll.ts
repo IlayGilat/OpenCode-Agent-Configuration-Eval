@@ -1,7 +1,7 @@
 import { createApp } from "../composition/createApp.js";
 import { runCommand } from "./runCommand.js";
 
-runCommand(async () => {
+await runCommand(async () => {
   const [runName] = process.argv.slice(2);
   const app = await createApp({ runName });
   const tickets = await app.ticketLoader.loadAll();
