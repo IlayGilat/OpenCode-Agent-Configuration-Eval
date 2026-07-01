@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ReportModel } from "../../../interfaces/reports/interfaces.js";
-import { FileSystem } from "../../platform/FileSystem.js";
+import { FileSystem } from "../../../adapters/filesystem/FileSystem.js";
 
 export class JsonReportWriter {
   constructor(

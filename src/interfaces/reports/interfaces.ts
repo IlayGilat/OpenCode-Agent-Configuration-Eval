@@ -6,6 +6,9 @@ export type RunResult = {
   score: number;
   verdict: string;
   wouldIMerge: boolean;
+  status: string;
+  failureType: string;
+  failurePhase: string;
   summary: string;
 };
 

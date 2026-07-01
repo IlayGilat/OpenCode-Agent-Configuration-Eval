@@ -1,25 +1,28 @@
 import type { EvalConfig } from "../interfaces/config/interfaces.js";
-import { OpenCodeRunner } from "../services/execution/opencode/OpenCodeRunner.js";
-import { OpenCodeTaskRunner } from "../services/execution/opencode/OpenCodeTaskRunner.js";
-import { RunContext } from "../services/execution/RunContext.js";
-import { RunPaths } from "../services/execution/RunPaths.js";
-import { RunRepository } from "../services/execution/RunRepository.js";
-import { RunService } from "../services/execution/RunService.js";
-import { FileSystem } from "../services/platform/FileSystem.js";
-import { ProcessRunner } from "../services/platform/ProcessRunner.js";
-import { TicketLoader } from "../services/preparation/tickets/TicketLoader.js";
-import { TicketPromptBuilder } from "../services/preparation/tickets/TicketPromptBuilder.js";
-import { GitService } from "../services/preparation/workspace/GitService.js";
-import { PatchService } from "../services/preparation/workspace/PatchService.js";
-import { WorkspaceService } from "../services/preparation/workspace/WorkspaceService.js";
-import { ReportGenerator } from "../services/results/ReportGenerator.js";
-import { ScoreAggregator } from "../services/results/ScoreAggregator.js";
-import { CsvReportWriter } from "../services/results/writers/CsvReportWriter.js";
-import { JsonReportWriter } from "../services/results/writers/JsonReportWriter.js";
-import { MarkdownReportWriter } from "../services/results/writers/MarkdownReportWriter.js";
-import { JudgePromptBuilder } from "../services/review/JudgePromptBuilder.js";
-import { JudgeResultParser } from "../services/review/JudgeResultParser.js";
-import { ConfigLoader } from "../services/setup/ConfigLoader.js";
+import { OpenCodeRunner } from "../adapters/opencode/OpenCodeRunner.js";
+import { OpenCodeTaskRunner } from "../services/opencode-task-execution/OpenCodeTaskRunner.js";
+import { RunContext } from "../workflows/pre-benchmark-run/RunContext.js";
+import { RunPaths } from "../workflows/pre-benchmark-run/RunPaths.js";
+import { RunArtifactRepository } from "../workflows/benchmark-run/RunArtifactRepository.js";
+import { BenchmarkRunWorkflow } from "../workflows/benchmark-run/BenchmarkRunWorkflow.js";
+import { JudgeWorkflow } from "../workflows/benchmark-run/judge/JudgeWorkflow.js";
+import { SolverWorkflow } from "../workflows/benchmark-run/solver/SolverWorkflow.js";
+import { ReportWorkflow } from "../workflows/post-benchmark-run/ReportWorkflow.js";
+import { FileSystem } from "../adapters/filesystem/FileSystem.js";
+import { ProcessRunner } from "../adapters/process/ProcessRunner.js";
+import { TicketLoader } from "../services/ticket-input/TicketLoader.js";
+import { TicketPromptBuilder } from "../services/ticket-input/TicketPromptBuilder.js";
+import { GitAdapter } from "../adapters/git/GitAdapter.js";
+import { PatchComparisonService } from "../services/patch-comparison/PatchComparisonService.js";
+import { WorkspaceService } from "../services/workspace-preparation/WorkspaceService.js";
+import { ReportGenerator } from "../services/result-reporting/ReportGenerator.js";
+import { ScoreAggregator } from "../services/result-reporting/ScoreAggregator.js";
+import { CsvReportWriter } from "../services/result-reporting/writers/CsvReportWriter.js";
+import { JsonReportWriter } from "../services/result-reporting/writers/JsonReportWriter.js";
+import { MarkdownReportWriter } from "../services/result-reporting/writers/MarkdownReportWriter.js";
+import { JudgePromptBuilder } from "../services/judge-evaluation/JudgePromptBuilder.js";
+import { JudgeResultParser } from "../services/judge-evaluation/JudgeResultParser.js";
+import { ConfigLoader } from "../services/configuration-loading/ConfigLoader.js";
 
 export type AppServices = {
   config: EvalConfig;
@@ -27,9 +30,9 @@ export type AppServices = {
   runPath: string;
   logger: Pick<typeof console, "info" | "warn" | "error">;
   ticketLoader: TicketLoader;
-  runRepository: RunRepository;
-  runService: RunService;
-  reportGenerator: ReportGenerator;
+  runArtifactRepository: RunArtifactRepository;
+  benchmarkRunWorkflow: BenchmarkRunWorkflow;
+  reportWorkflow: ReportWorkflow;
   workspaceService: WorkspaceService;
 };
 
@@ -47,9 +50,9 @@ export async function createApp(options: { runName?: string; existingRun?: boole
     config.solverPromptPath,
   );
   const ticketLoader = new TicketLoader(fileSystem);
-  const gitService = new GitService(processRunner);
-  const workspaceService = new WorkspaceService(config, gitService);
-  const patchService = new PatchService(config, gitService);
+  const gitAdapter = new GitAdapter(processRunner);
+  const workspaceService = new WorkspaceService(config, gitAdapter);
+  const patchComparisonService = new PatchComparisonService(config, gitAdapter);
   const openCodeRunner = new OpenCodeRunner(config, processRunner);
   const openCodeTaskRunner = new OpenCodeTaskRunner(ticketPromptBuilder, openCodeRunner);
   const judgePromptBuilder = new JudgePromptBuilder(
@@ -58,7 +61,18 @@ export async function createApp(options: { runName?: string; existingRun?: boole
   );
   const judgeResultParser = new JudgeResultParser();
   const runPaths = new RunPaths(activeRun.ticketsPath);
-  const runRepository = new RunRepository(runPaths, fileSystem, ticketPromptBuilder);
+  const runArtifactRepository = new RunArtifactRepository(runPaths, fileSystem, ticketPromptBuilder);
+  const solverWorkflow = new SolverWorkflow(
+    openCodeTaskRunner,
+    patchComparisonService,
+    runArtifactRepository,
+  );
+  const judgeWorkflow = new JudgeWorkflow(
+    openCodeTaskRunner,
+    judgePromptBuilder,
+    judgeResultParser,
+    runArtifactRepository,
+  );
   const scoreAggregator = new ScoreAggregator();
   const markdownReportWriter = new MarkdownReportWriter(activeRun.finalReportPath, fileSystem);
   const csvReportWriter = new CsvReportWriter(activeRun.finalReportPath, fileSystem);
@@ -69,13 +83,13 @@ export async function createApp(options: { runName?: string; existingRun?: boole
     csvReportWriter,
     jsonReportWriter,
   );
-  const runService = new RunService(
+  const reportWorkflow = new ReportWorkflow(reportGenerator);
+  const benchmarkRunWorkflow = new BenchmarkRunWorkflow(
     workspaceService,
-    patchService,
-    openCodeTaskRunner,
-    judgePromptBuilder,
-    judgeResultParser,
-    runRepository,
+    patchComparisonService,
+    solverWorkflow,
+    judgeWorkflow,
+    runArtifactRepository,
     logger,
   );
 
@@ -85,9 +99,9 @@ export async function createApp(options: { runName?: string; existingRun?: boole
     runPath: activeRun.runPath,
     logger,
     ticketLoader,
-    runRepository,
-    runService,
-    reportGenerator,
+    runArtifactRepository,
+    benchmarkRunWorkflow,
+    reportWorkflow,
     workspaceService,
   };
 }

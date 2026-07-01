@@ -10,6 +10,6 @@ await runCommand(async () => {
 
   const app = await createApp({ runName });
   const ticket = await app.ticketLoader.loadById(ticketId);
-  await app.runService.runTicket(ticket);
+  await app.benchmarkRunWorkflow.runTicket(ticket);
   app.logger.info(`Done. Run ${app.runName} written to ${app.runPath}`);
 });

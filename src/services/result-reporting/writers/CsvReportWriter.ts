@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ReportModel } from "../../../interfaces/reports/interfaces.js";
-import { FileSystem } from "../../platform/FileSystem.js";
+import { FileSystem } from "../../../adapters/filesystem/FileSystem.js";
 
 export class CsvReportWriter {
   constructor(
@@ -10,13 +10,16 @@ export class CsvReportWriter {
 
   async write(report: ReportModel): Promise<void> {
     const rows = [
-      ["taskId", "title", "score", "verdict", "wouldIMerge", "summary"],
+      ["taskId", "title", "score", "verdict", "wouldIMerge", "status", "failureType", "failurePhase", "summary"],
       ...report.tickets.map((ticket) => [
         ticket.taskId,
         ticket.title,
         String(ticket.score),
         ticket.verdict,
         String(ticket.wouldIMerge),
+        ticket.status,
+        ticket.failureType,
+        ticket.failurePhase,
         ticket.summary,
       ]),
     ];

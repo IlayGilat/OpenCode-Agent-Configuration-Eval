@@ -3,11 +3,13 @@ import type { OpenCodeRunResult } from "../../interfaces/opencode/interfaces.js"
 import type { JudgeResult } from "../../interfaces/scoring/interfaces.js";
 import { judgeResultSchema } from "../../interfaces/scoring/schemas.js";
 import type { JiraTicket } from "../../interfaces/tickets/interfaces.js";
-import { FileSystem } from "../platform/FileSystem.js";
-import { TicketPromptBuilder } from "../preparation/tickets/TicketPromptBuilder.js";
-import { RunPaths } from "./RunPaths.js";
+import { FileSystem } from "../../adapters/filesystem/FileSystem.js";
+import { TicketPromptBuilder } from "../../services/ticket-input/TicketPromptBuilder.js";
+import { RunPaths } from "../pre-benchmark-run/RunPaths.js";
 
-export class RunRepository {
+export class RunArtifactRepository {
+  private static readonly savedOutputCharacterLimit = 20_000;
+
   constructor(
     private readonly runPaths: RunPaths,
     private readonly fileSystem: FileSystem,
@@ -39,14 +41,14 @@ export class RunRepository {
   }
 
   async writeSolverOutput(ticketId: string, output: string): Promise<void> {
-    await this.fileSystem.writeText(this.runPaths.forTicket(ticketId).solverOutputPath, output);
+    await this.fileSystem.writeText(this.runPaths.forTicket(ticketId).solverOutputPath, this.compactSavedOutput(output));
   }
 
   async writeSolverLogs(ticketId: string, logs: OpenCodeRunResult): Promise<void> {
     const paths = this.runPaths.forTicket(ticketId);
-    await this.fileSystem.writeText(paths.solverRawLogPath, logs.rawOutput);
-    await this.fileSystem.writeText(paths.solverStdoutLogPath, logs.stdout);
-    await this.fileSystem.writeText(paths.solverStderrLogPath, logs.stderr);
+    await this.fileSystem.writeText(paths.solverRawLogPath, this.compactSavedOutput(logs.rawOutput));
+    await this.fileSystem.writeText(paths.solverStdoutLogPath, this.compactSavedOutput(logs.stdout));
+    await this.fileSystem.writeText(paths.solverStderrLogPath, this.compactSavedOutput(logs.stderr));
   }
 
   async writeJudgeInput(ticketId: string, input: string): Promise<void> {
@@ -54,14 +56,14 @@ export class RunRepository {
   }
 
   async writeJudgeOutput(ticketId: string, output: string): Promise<void> {
-    await this.fileSystem.writeText(this.runPaths.forTicket(ticketId).judgeOutputPath, output);
+    await this.fileSystem.writeText(this.runPaths.forTicket(ticketId).judgeOutputPath, this.compactSavedOutput(output));
   }
 
   async writeJudgeLogs(ticketId: string, logs: OpenCodeRunResult): Promise<void> {
     const paths = this.runPaths.forTicket(ticketId);
-    await this.fileSystem.writeText(paths.judgeRawLogPath, logs.rawOutput);
-    await this.fileSystem.writeText(paths.judgeStdoutLogPath, logs.stdout);
-    await this.fileSystem.writeText(paths.judgeStderrLogPath, logs.stderr);
+    await this.fileSystem.writeText(paths.judgeRawLogPath, this.compactSavedOutput(logs.rawOutput));
+    await this.fileSystem.writeText(paths.judgeStdoutLogPath, this.compactSavedOutput(logs.stdout));
+    await this.fileSystem.writeText(paths.judgeStderrLogPath, this.compactSavedOutput(logs.stderr));
   }
 
   async writeScore(ticketId: string, score: JudgeResult): Promise<void> {
@@ -89,5 +91,18 @@ export class RunRepository {
     }
 
     return scores.sort((left, right) => left.taskId.localeCompare(right.taskId));
+  }
+
+  private compactSavedOutput(output: string): string {
+    if (output.length <= RunArtifactRepository.savedOutputCharacterLimit) {
+      return output;
+    }
+
+    return [
+      output.slice(0, RunArtifactRepository.savedOutputCharacterLimit),
+      "",
+      `[Output truncated at ${RunArtifactRepository.savedOutputCharacterLimit} characters. Full output was streamed to console during execution.]`,
+      "",
+    ].join("\n");
   }
 }

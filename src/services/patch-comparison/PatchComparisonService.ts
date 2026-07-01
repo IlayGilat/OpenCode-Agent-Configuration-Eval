@@ -1,11 +1,11 @@
-import type { EvalConfig } from "../../../interfaces/config/interfaces.js";
-import type { JiraTicket } from "../../../interfaces/tickets/interfaces.js";
-import { GitService } from "./GitService.js";
+import type { EvalConfig } from "../../interfaces/config/interfaces.js";
+import type { JiraTicket } from "../../interfaces/tickets/interfaces.js";
+import { GitAdapter } from "../../adapters/git/GitAdapter.js";
 
-export class PatchService {
+export class PatchComparisonService {
   constructor(
     private readonly config: EvalConfig,
-    private readonly gitService: GitService,
+    private readonly gitService: GitAdapter,
   ) {}
 
   async createGoldPatch(ticket: JiraTicket): Promise<string> {

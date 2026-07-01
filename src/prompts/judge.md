@@ -2,7 +2,13 @@ You are judging an OpenCode solution against a historical merged PR.
 
 Compare the candidate patch to the gold patch. The gold patch is a reference implementation, not a requirement for exact line-by-line matching.
 
-Return only valid JSON with this shape:
+Rules:
+- Use only the ticket, patch notes, and diffs in this prompt.
+- Do not inspect repository files.
+- Do not run commands or use tools.
+- Return exactly one valid JSON object, with no markdown and no commentary.
+
+Return JSON with this shape:
 {
   "taskId": "{{ticketId}}",
   "score": 0,
@@ -32,10 +38,16 @@ Title: {{title}}
 Description:
 {{description}}
 
+Gold patch note:
+{{goldPatchNote}}
+
 Gold patch:
 ```diff
 {{goldPatch}}
 ```
+
+Candidate patch note:
+{{candidatePatchNote}}
 
 Candidate patch:
 ```diff

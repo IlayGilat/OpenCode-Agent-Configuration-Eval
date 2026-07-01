@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ReportModel } from "../../../interfaces/reports/interfaces.js";
-import { FileSystem } from "../../platform/FileSystem.js";
+import { FileSystem } from "../../../adapters/filesystem/FileSystem.js";
 
 export class MarkdownReportWriter {
   constructor(
@@ -35,11 +35,11 @@ export class MarkdownReportWriter {
       "",
       "## Score Table",
       "",
-      "| Task | Score | Verdict | Would Merge | Summary |",
-      "| --- | ---: | --- | --- | --- |",
+      "| Task | Score | Verdict | Status | Failure | Would Merge | Summary |",
+      "| --- | ---: | --- | --- | --- | --- | --- |",
       ...report.tickets.map(
         (ticket) =>
-          `| ${ticket.taskId} | ${ticket.score} | ${ticket.verdict} | ${ticket.wouldIMerge ? "yes" : "no"} | ${ticket.summary.replaceAll("|", "\\|")} |`,
+          `| ${ticket.taskId} | ${ticket.score} | ${ticket.verdict} | ${ticket.status} | ${this.escapeTableCell(ticket.failureType || "-")} | ${ticket.wouldIMerge ? "yes" : "no"} | ${this.escapeTableCell(this.truncate(ticket.summary, 280))} |`,
       ),
       "",
       "## Common Strengths",
@@ -60,6 +60,18 @@ export class MarkdownReportWriter {
   }
 
   private listOrFallback(items: string[]): string[] {
-    return items.length ? items.map((item) => `- ${item}`) : ["- No recurring items found yet."];
+    return items.length ? items.map((item) => `- ${this.truncate(item, 280)}`) : ["- No recurring items found yet."];
+  }
+
+  private escapeTableCell(value: string): string {
+    return value.replaceAll("|", "\\|").replace(/\s+/g, " ").trim();
+  }
+
+  private truncate(value: string, maxLength: number): string {
+    if (value.length <= maxLength) {
+      return value;
+    }
+
+    return `${value.slice(0, maxLength - 3)}...`;
   }
 }

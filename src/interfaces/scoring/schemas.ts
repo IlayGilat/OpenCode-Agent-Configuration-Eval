@@ -13,4 +13,7 @@ export const judgeResultSchema = z.object({
   summary: z.string(),
   strengths: z.array(z.string()),
   problems: z.array(z.string()),
+  failureType: z.string().optional(),
+  failurePhase: z.enum(["setup", "solver", "patch", "judge", "report"]).optional(),
+  failureMessage: z.string().optional(),
 });

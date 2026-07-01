@@ -1,6 +1,6 @@
-import { ProcessRunner } from "../../platform/ProcessRunner.js";
+import { ProcessRunner } from "../process/ProcessRunner.js";
 
-export class GitService {
+export class GitAdapter {
   constructor(
     private readonly processRunner: ProcessRunner,
     private readonly gitCommand = "git",

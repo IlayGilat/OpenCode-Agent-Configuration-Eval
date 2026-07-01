@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { EvalConfig } from "../../../interfaces/config/interfaces.js";
-import type { OpenCodeLogPaths, OpenCodeRunResult } from "../../../interfaces/opencode/interfaces.js";
-import { ProcessRunner } from "../../platform/ProcessRunner.js";
+import type { EvalConfig } from "../../interfaces/config/interfaces.js";
+import type { OpenCodeLogPaths, OpenCodeRunResult } from "../../interfaces/opencode/interfaces.js";
+import { ProcessRunner } from "../process/ProcessRunner.js";
 
 export class OpenCodeRunner {
   private static readonly placeholderModel = "your-provider/your-model";
+  private static readonly savedLogCharacterLimit = 20_000;
 
   constructor(
     private readonly config: EvalConfig,
@@ -65,26 +66,26 @@ export class OpenCodeRunner {
   }
 
   private openLogStreams(paths: OpenCodeLogPaths): {
-    raw: fs.WriteStream;
-    stdout: fs.WriteStream;
-    stderr: fs.WriteStream;
-    transcript: fs.WriteStream;
+    raw: CappedLogWriter;
+    stdout: CappedLogWriter;
+    stderr: CappedLogWriter;
+    transcript: CappedLogWriter;
     onConsoleOutput?: (chunk: string) => void;
   } {
     fs.mkdirSync(path.dirname(paths.rawPath), { recursive: true });
     fs.mkdirSync(path.dirname(paths.transcriptPath), { recursive: true });
-    const transcript = fs.createWriteStream(paths.transcriptPath, { flags: "a" });
+    const transcript = new CappedLogWriter(paths.transcriptPath, OpenCodeRunner.savedLogCharacterLimit, { flags: "a" });
     transcript.write([
       "",
       `===== OPENCODE ${paths.phase.toUpperCase()} START ${new Date().toISOString()} =====`,
-      `Raw terminal/log stream for this ${paths.phase} run is appended below.`,
+      `Saved log output is capped at ${OpenCodeRunner.savedLogCharacterLimit} characters. Full output still streamed to console.`,
       "",
     ].join("\n"));
 
     return {
-      raw: fs.createWriteStream(paths.rawPath, { flags: "w" }),
-      stdout: fs.createWriteStream(paths.stdoutPath, { flags: "w" }),
-      stderr: fs.createWriteStream(paths.stderrPath, { flags: "w" }),
+      raw: new CappedLogWriter(paths.rawPath, OpenCodeRunner.savedLogCharacterLimit),
+      stdout: new CappedLogWriter(paths.stdoutPath, OpenCodeRunner.savedLogCharacterLimit),
+      stderr: new CappedLogWriter(paths.stderrPath, OpenCodeRunner.savedLogCharacterLimit),
       transcript,
       onConsoleOutput: paths.onConsoleOutput,
     };
@@ -92,10 +93,10 @@ export class OpenCodeRunner {
 
   private writeChunk(
     streams: {
-      raw: fs.WriteStream;
-      stdout: fs.WriteStream;
-      stderr: fs.WriteStream;
-      transcript: fs.WriteStream;
+      raw: CappedLogWriter;
+      stdout: CappedLogWriter;
+      stderr: CappedLogWriter;
+      transcript: CappedLogWriter;
       onConsoleOutput?: (chunk: string) => void;
     },
     target: "raw" | "stdout" | "stderr",
@@ -124,5 +125,49 @@ export class OpenCodeRunner {
 
   private normalizePromptForCli(prompt: string): string {
     return prompt.replace(/\s+/g, " ").trim();
+  }
+}
+
+class CappedLogWriter {
+  private written = 0;
+  private truncated = false;
+  private readonly stream: fs.WriteStream;
+
+  constructor(
+    private readonly filePath: string,
+    private readonly limit: number,
+    options: { flags?: string } = {},
+  ) {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    this.stream = fs.createWriteStream(filePath, { flags: options.flags ?? "w" });
+  }
+
+  write(chunk: string): void {
+    if (this.written >= this.limit) {
+      this.noteTruncated();
+      return;
+    }
+
+    const remaining = this.limit - this.written;
+    const next = chunk.length > remaining ? chunk.slice(0, remaining) : chunk;
+    this.stream.write(next);
+    this.written += next.length;
+
+    if (chunk.length > remaining) {
+      this.noteTruncated();
+    }
+  }
+
+  end(): void {
+    this.stream.end();
+  }
+
+  private noteTruncated(): void {
+    if (this.truncated) {
+      return;
+    }
+
+    this.truncated = true;
+    this.stream.write(`\n\n[Log truncated at ${this.limit} characters. Full output was streamed to console.]\n`);
   }
 }
