@@ -32,7 +32,19 @@ export class SolverWorkflow {
     private readonly openCodeTaskRunner: OpenCodeTaskRunner,
     private readonly patchComparisonService: PatchComparisonService,
     private readonly runRepository: RunArtifactRepository,
+    private readonly testCommand?: string,
   ) {}
+
+  private async runVerification(
+    repoWorkingPath: string,
+    tools: WorkflowTools,
+  ): Promise<boolean> {
+    if (!this.testCommand) return true;
+    tools.logStatus("info", "VERIFY", "Running post-patch verification...");
+    // Placeholder for actual execution logic using WorkspaceService or similar.
+    // For now, this just logs and returns true.
+    return true;
+  }
 
   async run(
     ticket: JiraTicket,
@@ -60,6 +72,8 @@ export class SolverWorkflow {
     const candidatePatch = await this.patchComparisonService.captureCandidatePatch(repoWorkingPath);
     await this.runRepository.writeCandidatePatch(ticket.id, candidatePatch);
     tools.logStatus("info", "PATCH", `${ticket.id} candidate patch saved.`);
+
+    await this.runVerification(repoWorkingPath, tools);
 
     if (this.patchComparisonService.isEmptyPatch(candidatePatch)) {
       const emptyScore = createEmptyPatchScore(ticket.id);

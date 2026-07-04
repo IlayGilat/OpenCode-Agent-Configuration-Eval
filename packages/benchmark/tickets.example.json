@@ -1,0 +1,12 @@
+[
+  { "id": "PROJECT-001", "title": "Implement login", "description": "Add login page", "baseCommit": "a1b2c3d4e5f6g7h8i9j0a1b2c3d4e5f6g7h8i9j0", "goldCommit": "k1l2m3n4o5p6q7r8s9t0k1l2m3n4o5p6q7r8s9t0" },
+  { "id": "PROJECT-002", "title": "Fix header", "description": "Fix header alignment", "baseCommit": "b1c2d3e4f5g6h7i8j9k0b1c2d3e4f5g6h7i8j9k0", "goldCommit": "l1m2n3o4p5q6r7s8t9u0l1m2n3o4p5q6r7s8t9u0" },
+  { "id": "PROJECT-003", "title": "Add footer", "description": "Include site footer", "baseCommit": "c1d2e3f4g5h6i7j8k9l0c1d2e3f4g5h6i7j8k9l0", "goldCommit": "m1n2o3p4q5r6s7t8u9v0m1n2o3p4q5r6s7t8u9v0" },
+  { "id": "PROJECT-004", "title": "Update styles", "description": "Modernize CSS", "baseCommit": "d1e2f3g4h5i6j7k8l9m0d1e2f3g4h5i6j7k8l9m0", "goldCommit": "n1o2p3q4r5s6t7u8v9w0n1o2p3q4r5s6t7u8v9w0" },
+  { "id": "PROJECT-005", "title": "Add analytics", "description": "Track page views", "baseCommit": "e1f2g3h4i5j6k7l8m9n0e1f2g3h4i5j6k7l8m9n0", "goldCommit": "o1p2q3r4s5t6u7v8w9x0o1p2q3r4s5t6u7v8w9x0" },
+  { "id": "PROJECT-006", "title": "Enable SEO", "description": "Add meta tags", "baseCommit": "f1g2h3i4j5k6l7m8n9o0f1g2h3i4j5k6l7m8n9o0", "goldCommit": "p1q2r3s4t5u6v7w8x9y0p1q2r3s4t5u6v7w8x9y0" },
+  { "id": "PROJECT-007", "title": "Form validation", "description": "Add Joi validation", "baseCommit": "g1h2i3j4k5l6m7n8o9p0g1h2i3j4k5l6m7n8o9p0", "goldCommit": "q1r2s3t4u5v6w7x8y9z0q1r2s3t4u5v6w7x8y9z0" },
+  { "id": "PROJECT-008", "title": "User profile", "description": "Add edit profile", "baseCommit": "h1i2j3k4l5m6n7o8p9q0h1i2j3k4l5m6n7o8p9q0", "goldCommit": "r1s2t3u4v5w6x7y8z9a0r1s2t3u4v5w6x7y8z9a0" },
+  { "id": "PROJECT-009", "title": "Chat component", "description": "Real-time messaging", "baseCommit": "i1j2k3l4m5n6o7p8q9r0i1j2k3l4m5n6o7p8q9r0", "goldCommit": "s1t2u3v4w5x6y7z8a9b0s1t2u3v4w5x6y7z8a9b0" },
+  { "id": "PROJECT-010", "title": "Dark mode", "description": "Add theme toggle", "baseCommit": "j1k2l3m4n5o6p7q8r9s0j1k2l3m4n5o6p7q8r9s0", "goldCommit": "t1u2v3w4x5y6z7a8b9c0t1u2v3w4x5y6z7a8b9c0" }
+]

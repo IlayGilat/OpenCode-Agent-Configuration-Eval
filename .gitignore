@@ -1,5 +1,11 @@
-﻿node_modules/
+node_modules/
 runs/
 .env
 tickets.json
 package-lock.json
+
+docs/superpowers/plans/
+.superpowers/
+improve_plan_v2.md
+improve_plan.md
+base_commit.txt
