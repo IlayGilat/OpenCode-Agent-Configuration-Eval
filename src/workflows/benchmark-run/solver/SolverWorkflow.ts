@@ -1,25 +1,10 @@
-import type { OpenCodeRunResult } from "../../../interfaces/opencode/interfaces.js";
 import type { JudgeResult } from "../../../interfaces/scoring/interfaces.js";
 import type { JiraTicket } from "../../../interfaces/tickets/interfaces.js";
 import { OpenCodeTaskRunner } from "../../../services/opencode-task-execution/OpenCodeTaskRunner.js";
 import { PatchComparisonService } from "../../../services/patch-comparison/PatchComparisonService.js";
-import { createEmptyPatchScore } from "../../../services/judge-evaluation/createEmptyPatchScore.js";
-import { RunArtifactRepository } from "../RunArtifactRepository.js";
-
-type LogLevel = "info" | "warn" | "error";
-type Phase = "solver" | "judge";
-
-type OpenCodePhaseRunner = (
-  ticketId: string,
-  run: () => Promise<OpenCodeRunResult>,
-  phase: Phase,
-) => Promise<OpenCodeRunResult>;
-
-type WorkflowTools = {
-  runOpenCodeWithLogCapture: OpenCodePhaseRunner;
-  writeLiveOpenCodeOutput: (chunk: string) => void;
-  logStatus: (level: LogLevel, label: string, message: string) => void;
-};
+import { createEmptyPatchScore } from "../../../services/judge-evaluation/scores/createEmptyPatchScore.js";
+import { RunArtifactRepository } from "../artifacts/RunArtifactRepository.js";
+import type { WorkflowTools } from "../execution/WorkflowTools.js";
 
 type SolverRunPaths = ReturnType<RunArtifactRepository["pathsForTicket"]>;
 

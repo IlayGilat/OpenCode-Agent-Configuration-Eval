@@ -1,4 +1,4 @@
-import type { JudgeResult } from "../../interfaces/scoring/interfaces.js";
+import type { JudgeResult } from "../../../interfaces/scoring/interfaces.js";
 
 export function createEmptyPatchScore(taskId: string): JudgeResult {
   return {

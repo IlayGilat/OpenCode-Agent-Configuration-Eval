@@ -3,8 +3,8 @@ import { OpenCodeRunner } from "../adapters/opencode/OpenCodeRunner.js";
 import { OpenCodeTaskRunner } from "../services/opencode-task-execution/OpenCodeTaskRunner.js";
 import { RunContext } from "../workflows/pre-benchmark-run/RunContext.js";
 import { RunPaths } from "../workflows/pre-benchmark-run/RunPaths.js";
-import { RunArtifactRepository } from "../workflows/benchmark-run/RunArtifactRepository.js";
-import { BenchmarkRunWorkflow } from "../workflows/benchmark-run/BenchmarkRunWorkflow.js";
+import { RunArtifactRepository } from "../workflows/benchmark-run/artifacts/RunArtifactRepository.js";
+import { BenchmarkRunWorkflow } from "../workflows/benchmark-run/orchestration/BenchmarkRunWorkflow.js";
 import { JudgeWorkflow } from "../workflows/benchmark-run/judge/JudgeWorkflow.js";
 import { SolverWorkflow } from "../workflows/benchmark-run/solver/SolverWorkflow.js";
 import { ReportWorkflow } from "../workflows/post-benchmark-run/ReportWorkflow.js";
@@ -15,14 +15,14 @@ import { TicketPromptBuilder } from "../services/ticket-input/TicketPromptBuilde
 import { GitAdapter } from "../adapters/git/GitAdapter.js";
 import { PatchComparisonService } from "../services/patch-comparison/PatchComparisonService.js";
 import { WorkspaceService } from "../services/workspace-preparation/WorkspaceService.js";
-import { ReportGenerator } from "../services/result-reporting/ReportGenerator.js";
+import { ReportGenerator } from "../services/result-reporting/generation/ReportGenerator.js";
 import { ScoreAggregator } from "../services/result-reporting/ScoreAggregator.js";
 import { CsvReportWriter } from "../services/result-reporting/writers/CsvReportWriter.js";
 import { JsonReportWriter } from "../services/result-reporting/writers/JsonReportWriter.js";
 import { MarkdownReportWriter } from "../services/result-reporting/writers/MarkdownReportWriter.js";
-import { JudgePromptBuilder } from "../services/judge-evaluation/JudgePromptBuilder.js";
-import { JudgeResultParser } from "../services/judge-evaluation/JudgeResultParser.js";
-import { ConfigLoader } from "../services/configuration-loading/ConfigLoader.js";
+import { JudgePromptBuilder } from "../services/judge-evaluation/prompt/JudgePromptBuilder.js";
+import { JudgeResultParser } from "../services/judge-evaluation/parser/JudgeResultParser.js";
+import { ConfigLoader } from "../services/configuration-loading/loader/ConfigLoader.js";
 
 export type AppServices = {
   config: EvalConfig;
