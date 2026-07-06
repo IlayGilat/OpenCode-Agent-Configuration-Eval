@@ -1,6 +1,6 @@
 import type { EvalConfig } from "../../interfaces/config/interfaces.js";
 import type { JiraTicket } from "../../interfaces/tickets/interfaces.js";
-import { GitAdapter } from "../../adapters/git/GitAdapter.js";
+import { GitAdapter } from "../../adapters/git/git-adapter.js";
 
 export class WorkspaceService {
   constructor(
@@ -9,17 +9,17 @@ export class WorkspaceService {
   ) {}
 
   async prepare(ticket: JiraTicket): Promise<string> {
-    await this.gitService.forceCheckout(this.config.repoPath, ticket.baseCommit);
-    await this.gitService.clean(this.config.repoPath);
+    await this.gitService.checkoutDetached(this.config.repoPath, ticket.baseCommit);
+    await this.gitService.cleanUntrackedFiles(this.config.repoPath);
     return this.config.repoPath;
   }
 
   async cleanAll(): Promise<void> {
-    await this.gitService.clean(this.config.repoPath);
+    await this.gitService.cleanUntrackedFiles(this.config.repoPath);
   }
 
   async resetAfterTicket(ticket: JiraTicket): Promise<void> {
-    await this.gitService.forceCheckout(this.config.repoPath, ticket.baseCommit);
-    await this.gitService.clean(this.config.repoPath);
+    await this.gitService.checkoutDetached(this.config.repoPath, ticket.baseCommit);
+    await this.gitService.cleanUntrackedFiles(this.config.repoPath);
   }
 }

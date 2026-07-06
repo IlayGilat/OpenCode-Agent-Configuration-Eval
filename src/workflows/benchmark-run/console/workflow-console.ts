@@ -1,4 +1,4 @@
-import type { Logger, LogLevel, OpenCodePhaseRunner, WorkflowTools } from "../execution/WorkflowTools.js";
+import type { Logger, LogLevel, OpenCodePhaseRunner, WorkflowTools } from "../execution/workflow-tools.js";
 
 export class WorkflowConsole {
   private readonly colorsEnabled = !process.env.NO_COLOR && process.env.FORCE_COLOR !== "0";

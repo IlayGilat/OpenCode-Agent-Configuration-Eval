@@ -1,16 +1,16 @@
 import type { EvalConfig } from "../../interfaces/config/interfaces.js";
 import type { OpenCodeLogPaths, OpenCodeRunResult } from "../../interfaces/opencode/interfaces.js";
-import { ProcessRunner } from "../process/ProcessRunner.js";
+import { ProcessRunner } from "../process/process-runner.js";
 import {
   closeOpenCodeLogStreams,
   openOpenCodeLogStreams,
   writeOpenCodeLogChunk,
-} from "./OpenCodeLogStreams.js";
+} from "./open-code-log-streams.js";
 import {
   normalizePromptForCli,
   shortMessageForPhase,
   writePromptFile,
-} from "./OpenCodePromptFiles.js";
+} from "./open-code-prompt-files.js";
 
 export class OpenCodeRunner {
   private static readonly placeholderModel = "your-provider/your-model";

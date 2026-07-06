@@ -1,7 +1,7 @@
 import type { JudgeResult } from "../../../interfaces/scoring/interfaces.js";
 import { judgeResultSchema } from "../../../interfaces/scoring/schemas.js";
-import { extractJsonObject } from "./jsonExtraction.js";
-import { normalizeJudgeResult } from "./scoreNormalization.js";
+import { extractJsonObject } from "./json-extraction.js";
+import { normalizeJudgeResult } from "./score-normalization.js";
 
 export class JudgeResultParser {
   parse(taskId: string, raw: string): JudgeResult {

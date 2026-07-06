@@ -3,10 +3,10 @@ import type { OpenCodeRunResult } from "../../../interfaces/opencode/interfaces.
 import type { JudgeResult } from "../../../interfaces/scoring/interfaces.js";
 import { judgeResultSchema } from "../../../interfaces/scoring/schemas.js";
 import type { JiraTicket } from "../../../interfaces/tickets/interfaces.js";
-import { FileSystem } from "../../../adapters/filesystem/FileSystem.js";
-import { TicketPromptBuilder } from "../../../services/ticket-input/TicketPromptBuilder.js";
-import { RunPaths } from "../../pre-benchmark-run/RunPaths.js";
-import { compactSavedOutput as compactOutput } from "./compactSavedOutput.js";
+import { FileSystem } from "../../../adapters/filesystem/file-system.js";
+import { TicketPromptBuilder } from "../../../services/ticket-input/ticket-prompt-builder.js";
+import { RunPaths } from "../../pre-benchmark-run/run-paths.js";
+import { compactSavedOutput as compactOutput } from "./compact-saved-output.js";
 
 export class RunArtifactRepository {
   private static readonly savedOutputCharacterLimit = 20_000;

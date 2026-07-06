@@ -1,7 +1,7 @@
 import type { JiraTicket } from "../../../interfaces/tickets/interfaces.js";
-import { FileSystem } from "../../../adapters/filesystem/FileSystem.js";
-import { renderTemplate } from "../../ticket-input/renderTemplate.js";
-import { preparePatch } from "./patchSummary.js";
+import { FileSystem } from "../../../adapters/filesystem/file-system.js";
+import { renderTemplate } from "../../ticket-input/render-template.js";
+import { preparePatch } from "./patch-summary.js";
 
 export type JudgePromptInput = {
   ticket: JiraTicket;

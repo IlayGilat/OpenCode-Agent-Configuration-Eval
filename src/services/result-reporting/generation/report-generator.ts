@@ -1,11 +1,11 @@
 import type { ReportModel } from "../../../interfaces/reports/interfaces.js";
 import type { JudgeResult } from "../../../interfaces/scoring/interfaces.js";
 import type { JiraTicket } from "../../../interfaces/tickets/interfaces.js";
-import { buildExecutiveSummary, buildRecommendations, topItems } from "./reportText.js";
-import { CsvReportWriter } from "../writers/CsvReportWriter.js";
-import { JsonReportWriter } from "../writers/JsonReportWriter.js";
-import { MarkdownReportWriter } from "../writers/MarkdownReportWriter.js";
-import { ScoreAggregator } from "../ScoreAggregator.js";
+import { buildExecutiveSummary, buildRecommendations, topItems } from "./report-text.js";
+import { CsvReportWriter } from "../writers/csv-report-writer.js";
+import { JsonReportWriter } from "../writers/json-report-writer.js";
+import { MarkdownReportWriter } from "../writers/markdown-report-writer.js";
+import { ScoreAggregator } from "../score-aggregator.js";
 
 export class ReportGenerator {
   constructor(

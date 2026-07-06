@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { TicketRunPaths } from "../../interfaces/evaluation/interfaces.js";
+import { toKebabCase } from "../../shared/text/to-kebab-case.js";
 
 export class RunPaths {
   constructor(private readonly runsPath: string) {}
@@ -9,7 +10,8 @@ export class RunPaths {
   }
 
   forTicket(ticketId: string): TicketRunPaths {
-    const runDir = path.join(this.runsPath, ticketId);
+    const ticketFolderName = toKebabCase(ticketId);
+    const runDir = path.join(this.runsPath, ticketFolderName);
     const inputDir = path.join(runDir, "input");
     const patchesDir = path.join(runDir, "patches");
     const outputDir = path.join(runDir, "output");

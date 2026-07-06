@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ReportModel } from "../../../interfaces/reports/interfaces.js";
-import { FileSystem } from "../../../adapters/filesystem/FileSystem.js";
+import { FileSystem } from "../../../adapters/filesystem/file-system.js";
 
 export class CsvReportWriter {
   constructor(

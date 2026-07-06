@@ -19,7 +19,7 @@ cp .env.example .env
 cp tickets.example.json tickets.json
 ```
 
-Edit `.env` to point at the repository you want to evaluate. The example file documents every supported setting:
+Edit `.env` to point at the repository you want to evaluate. Values can be omitted to use the defaults shown below:
 
 ```bash
 REPO_PATH=./sample-repo
@@ -32,15 +32,15 @@ Edit `tickets.json` with the benchmark tickets you want to run. You can start fr
 
 ## Configuration
 
-`.env` supports these values:
+`.env` supports these values. None are strictly required because the CLI has local defaults, but `REPO_PATH` and `MODEL` should usually be set for a real evaluation:
 
-| Name | Required | Description |
+| Name | Default | Description |
 | --- | --- | --- |
-| `REPO_PATH` | Yes | Path to the target repository that OpenCode should modify. Relative paths are resolved from this project root. |
-| `RUNS_PATH` | Yes | Directory where run artifacts, patches, logs, and reports are written. |
-| `MODEL` | Yes | OpenCode model identifier used for the solver and judge phases. |
-| `TIMEOUT_MS` | Yes | Timeout for each OpenCode invocation, in milliseconds. |
-| `CONFIGURED_RUN_NAME` | No | Optional fixed run folder name. Leave unset to generate timestamped run names. |
+| `REPO_PATH` | `./sample-repo` | Path to the target repository that OpenCode should modify. Relative paths are resolved from this project root. |
+| `RUNS_PATH` | `./runs` | Directory where run artifacts, patches, logs, and reports are written. |
+| `MODEL` | `opencode/deepseek-v4-flash-free` | OpenCode model identifier used for the solver and judge phases. |
+| `TIMEOUT_MS` | `3600000` | Timeout for each OpenCode invocation, in milliseconds. |
+| `CONFIGURED_RUN_NAME` | unset | Optional fixed run folder name. Leave unset to generate a unique run name. |
 
 `tickets.json` must be a JSON array. Each ticket has this shape:
 
@@ -74,4 +74,4 @@ npm run typecheck
 
 ## Outputs
 
-Each run is written to `runs/<run-name>/` with per-ticket artifacts and final reports in Markdown, JSON, and CSV formats.
+Each run is written to `runs/<run-name>/` with per-ticket artifacts and final reports in Markdown, JSON, and CSV formats. Generated run names and ticket artifact folder names are normalized to kebab-case; ticket IDs inside reports and score files keep their original spelling.

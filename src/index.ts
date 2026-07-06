@@ -1,4 +1,4 @@
-import { createApp } from "./composition/createApp.js";
+import { createApp } from "./composition/create-app.js";
 
 try {
   const app = await createApp();

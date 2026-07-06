@@ -1,12 +1,12 @@
 import type { JudgeResult } from "../../../interfaces/scoring/interfaces.js";
 import type { JiraTicket } from "../../../interfaces/tickets/interfaces.js";
-import { createFailedScore } from "../../../shared/scoring/createFailedScore.js";
-import { OpenCodeTaskRunner } from "../../../services/opencode-task-execution/OpenCodeTaskRunner.js";
-import { JudgePromptBuilder } from "../../../services/judge-evaluation/prompt/JudgePromptBuilder.js";
-import { JudgeResultParser } from "../../../services/judge-evaluation/parser/JudgeResultParser.js";
+import { createFailedScore } from "../../../shared/scoring/create-failed-score.js";
+import { OpenCodeTaskRunner } from "../../../services/opencode-task-execution/open-code-task-runner.js";
+import { JudgePromptBuilder } from "../../../services/judge-evaluation/prompt/judge-prompt-builder.js";
+import { JudgeResultParser } from "../../../services/judge-evaluation/parser/judge-result-parser.js";
 import { formatError } from "../../../shared/errors/errors.js";
-import { RunArtifactRepository } from "../artifacts/RunArtifactRepository.js";
-import type { WorkflowTools } from "../execution/WorkflowTools.js";
+import { RunArtifactRepository } from "../artifacts/run-artifact-repository.js";
+import type { WorkflowTools } from "../execution/workflow-tools.js";
 
 type JudgeRunPaths = ReturnType<RunArtifactRepository["pathsForTicket"]>;
 

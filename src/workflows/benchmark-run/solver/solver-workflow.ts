@@ -1,10 +1,10 @@
 import type { JudgeResult } from "../../../interfaces/scoring/interfaces.js";
 import type { JiraTicket } from "../../../interfaces/tickets/interfaces.js";
-import { OpenCodeTaskRunner } from "../../../services/opencode-task-execution/OpenCodeTaskRunner.js";
-import { PatchComparisonService } from "../../../services/patch-comparison/PatchComparisonService.js";
-import { createEmptyPatchScore } from "../../../services/judge-evaluation/scores/createEmptyPatchScore.js";
-import { RunArtifactRepository } from "../artifacts/RunArtifactRepository.js";
-import type { WorkflowTools } from "../execution/WorkflowTools.js";
+import { OpenCodeTaskRunner } from "../../../services/opencode-task-execution/open-code-task-runner.js";
+import { PatchComparisonService } from "../../../services/patch-comparison/patch-comparison-service.js";
+import { createEmptyPatchScore } from "../../../services/judge-evaluation/scores/create-empty-patch-score.js";
+import { RunArtifactRepository } from "../artifacts/run-artifact-repository.js";
+import type { WorkflowTools } from "../execution/workflow-tools.js";
 
 type SolverRunPaths = ReturnType<RunArtifactRepository["pathsForTicket"]>;
 

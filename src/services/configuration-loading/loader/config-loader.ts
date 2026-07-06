@@ -2,9 +2,9 @@ import path from "node:path";
 import dotenv from "dotenv";
 import type { EvalConfig } from "../../../interfaces/config/interfaces.js";
 import { evalConfigSchema } from "../../../interfaces/config/schemas.js";
-import { FileSystem } from "../../../adapters/filesystem/FileSystem.js";
-import { resolveConfigPath } from "./configPaths.js";
-import { envValueOrDefault, numberEnvValueOrDefault, optionalEnvValue } from "./envParsing.js";
+import { FileSystem } from "../../../adapters/filesystem/file-system.js";
+import { resolveConfigPath } from "./config-paths.js";
+import { envValueOrDefault, numberEnvValueOrDefault, optionalEnvValue } from "./env-parsing.js";
 
 export class ConfigLoader {
   private static readonly defaults = {

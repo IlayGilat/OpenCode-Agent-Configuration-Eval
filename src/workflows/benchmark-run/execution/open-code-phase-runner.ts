@@ -1,8 +1,8 @@
 import type { OpenCodeRunResult } from "../../../interfaces/opencode/interfaces.js";
-import { ProcessRunError } from "../../../adapters/process/ProcessRunner.js";
-import { RunArtifactRepository } from "../artifacts/RunArtifactRepository.js";
-import type { Phase } from "./WorkflowTools.js";
-import { WorkflowConsole } from "../console/WorkflowConsole.js";
+import { ProcessRunError } from "../../../adapters/process/process-runner.js";
+import { RunArtifactRepository } from "../artifacts/run-artifact-repository.js";
+import type { Phase } from "./workflow-tools.js";
+import { WorkflowConsole } from "../console/workflow-console.js";
 
 export class OpenCodePhaseRunner {
   constructor(

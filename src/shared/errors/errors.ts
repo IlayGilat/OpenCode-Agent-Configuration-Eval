@@ -1,5 +1,5 @@
-import { ProcessRunError } from "../../adapters/process/ProcessRunner.js";
-import { truncateText } from "../text/truncateText.js";
+import { ProcessRunError } from "../../adapters/process/process-runner.js";
+import { truncateText } from "../text/truncate-text.js";
 
 export function formatError(error: unknown): string {
   if (error instanceof Error) {

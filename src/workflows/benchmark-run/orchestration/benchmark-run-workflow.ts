@@ -1,15 +1,27 @@
 import type { JudgeResult } from "../../../interfaces/scoring/interfaces.js";
 import type { JiraTicket } from "../../../interfaces/tickets/interfaces.js";
-import { PatchComparisonService } from "../../../services/patch-comparison/PatchComparisonService.js";
-import { WorkspaceService } from "../../../services/workspace-preparation/WorkspaceService.js";
-import { createFailedScore } from "../../../shared/scoring/createFailedScore.js";
+import { PatchComparisonService } from "../../../services/patch-comparison/patch-comparison-service.js";
+import { WorkspaceService } from "../../../services/workspace-preparation/workspace-service.js";
+import { createFailedScore } from "../../../shared/scoring/create-failed-score.js";
 import { compactErrorMessage, formatError } from "../../../shared/errors/errors.js";
-import { RunArtifactRepository } from "../artifacts/RunArtifactRepository.js";
-import { WorkflowConsole } from "../console/WorkflowConsole.js";
-import { OpenCodePhaseRunner } from "../execution/OpenCodePhaseRunner.js";
-import type { Logger } from "../execution/WorkflowTools.js";
-import { JudgeWorkflow } from "../judge/JudgeWorkflow.js";
-import { SolverWorkflow } from "../solver/SolverWorkflow.js";
+import { RunArtifactRepository } from "../artifacts/run-artifact-repository.js";
+import { WorkflowConsole } from "../console/workflow-console.js";
+import { OpenCodePhaseRunner } from "../execution/open-code-phase-runner.js";
+import type { Logger } from "../execution/workflow-tools.js";
+import { JudgeWorkflow } from "../judge/judge-workflow.js";
+import { SolverWorkflow } from "../solver/solver-workflow.js";
+
+type FailurePhase = NonNullable<JudgeResult["failurePhase"]>;
+
+class TicketRunError extends Error {
+  constructor(
+    readonly failurePhase: FailurePhase,
+    readonly originalError: unknown,
+  ) {
+    super(originalError instanceof Error ? originalError.message : String(originalError));
+    this.name = "TicketRunError";
+  }
+}
 
 export class BenchmarkRunWorkflow {
   private readonly workflowConsole: WorkflowConsole;
@@ -38,10 +50,12 @@ export class BenchmarkRunWorkflow {
       try {
         result = await this.runTicket(ticket);
       } catch (error) {
+        const failurePhase = error instanceof TicketRunError ? error.failurePhase : "setup";
+        const originalError = error instanceof TicketRunError ? error.originalError : error;
         failed = true;
-        result = createFailedScore(ticket.id, error, {
-          failureType: "ticket_execution_failed",
-          failurePhase: "solver",
+        result = createFailedScore(ticket.id, originalError, {
+          failureType: failureTypeForPhase(failurePhase),
+          failurePhase,
         });
         await this.runRepository.writeScore(ticket.id, result);
         this.workflowConsole.logStatus("error", "FAIL", `Finished ticket ${index + 1}/${tickets.length}: ${ticket.id} failed; continuing.`);
@@ -58,19 +72,22 @@ export class BenchmarkRunWorkflow {
   }
 
   private async runTicket(ticket: JiraTicket): Promise<JudgeResult> {
-    await this.runRepository.createRunFolder(ticket.id);
+    let failurePhase: FailurePhase = "setup";
 
     try {
+      await this.runRepository.createRunFolder(ticket.id);
       this.workflowConsole.logStatus("info", "RUN", `${ticket.id}: ${ticket.title}`);
 
       const repoWorkingPath = await this.workspaceService.prepare(ticket);
       await this.runRepository.writeTicketMarkdown(ticket);
 
+      failurePhase = "patch";
       const goldPatch = await this.patchService.createGoldPatch(ticket);
       await this.runRepository.writeGoldPatch(ticket.id, goldPatch);
       const runPaths = this.runRepository.pathsForTicket(ticket.id);
       const tools = this.workflowConsole.tools(this.openCodePhaseRunner.run.bind(this.openCodePhaseRunner));
 
+      failurePhase = "solver";
       const solverResult = await this.solverWorkflow.run(
         ticket,
         repoWorkingPath,
@@ -82,6 +99,7 @@ export class BenchmarkRunWorkflow {
         return solverResult.score;
       }
 
+      failurePhase = "judge";
       return this.judgeWorkflow.run({
         ticket,
         repoWorkingPath,
@@ -93,7 +111,7 @@ export class BenchmarkRunWorkflow {
     } catch (error) {
       await this.runRepository.writeFailure(ticket.id, formatError(error));
       this.workflowConsole.logStatus("error", "FAIL", `${ticket.id} stopped. Details saved to failure.txt.`);
-      throw error;
+      throw new TicketRunError(failurePhase, error);
     } finally {
       try {
         await this.workspaceService.resetAfterTicket(ticket);
@@ -101,5 +119,20 @@ export class BenchmarkRunWorkflow {
         this.workflowConsole.logStatus("warn", "WARN", `${ticket.id} workspace cleanup failed: ${compactErrorMessage(cleanupError)}`);
       }
     }
+  }
+}
+
+function failureTypeForPhase(phase: FailurePhase): string {
+  switch (phase) {
+    case "setup":
+      return "setup_failed";
+    case "patch":
+      return "patch_capture_failed";
+    case "solver":
+      return "solver_execution_failed";
+    case "judge":
+      return "judge_execution_failed";
+    case "report":
+      return "report_failed";
   }
 }

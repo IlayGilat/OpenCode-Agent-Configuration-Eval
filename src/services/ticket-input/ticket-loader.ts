@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { JiraTicket } from "../../interfaces/tickets/interfaces.js";
 import { ticketsSchema } from "../../interfaces/tickets/schemas.js";
-import { FileSystem } from "../../adapters/filesystem/FileSystem.js";
+import { FileSystem } from "../../adapters/filesystem/file-system.js";
 
 export class TicketLoader {
   constructor(

@@ -2,7 +2,8 @@ import crypto from "node:crypto";
 import path from "node:path";
 import type { EvalConfig } from "../../interfaces/config/interfaces.js";
 import type { ActiveRun } from "../../interfaces/evaluation/interfaces.js";
-import { FileSystem } from "../../adapters/filesystem/FileSystem.js";
+import { FileSystem } from "../../adapters/filesystem/file-system.js";
+import { toKebabCase } from "../../shared/text/to-kebab-case.js";
 
 export class RunContext {
   constructor(
@@ -35,10 +36,11 @@ export class RunContext {
   }
 
   private createFromName(selectedRunName: string): ActiveRun {
-    const runPath = path.join(this.config.runsPath, selectedRunName);
+    const runName = toKebabCase(selectedRunName);
+    const runPath = path.join(this.config.runsPath, runName);
 
     return {
-      runName: selectedRunName,
+      runName,
       runPath,
       ticketsPath: path.join(runPath, "tickets"),
       finalReportPath: path.join(runPath, "final-report"),

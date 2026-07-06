@@ -1,6 +1,6 @@
 import type { JiraTicket } from "../../interfaces/tickets/interfaces.js";
-import { FileSystem } from "../../adapters/filesystem/FileSystem.js";
-import { renderTemplate } from "./renderTemplate.js";
+import { FileSystem } from "../../adapters/filesystem/file-system.js";
+import { renderTemplate } from "./render-template.js";
 
 export class TicketPromptBuilder {
   constructor(
