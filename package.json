@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "all": "tsx src/cli/runAll.ts",
-    "ticket": "tsx src/cli/runTicket.ts",
+    "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -63,19 +63,7 @@ The `baseCommit` is the commit checked out before the agent starts work. The `go
 Run all tickets:
 
 ```bash
-npm run all
-```
-
-Run a single ticket:
-
-```bash
-npm run ticket -- FDT-001
-```
-
-Run a single ticket with a custom run name:
-
-```bash
-npm run ticket -- FDT-001 my-run-name
+npm run start
 ```
 
 Type-check the project:

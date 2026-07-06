@@ -56,7 +56,7 @@ export class BenchmarkRunWorkflow {
     return results;
   }
 
-  async runTicket(ticket: JiraTicket): Promise<JudgeResult> {
+  private async runTicket(ticket: JiraTicket): Promise<JudgeResult> {
     await this.runRepository.createRunFolder(ticket.id);
 
     try {

@@ -13,15 +13,4 @@ export class TicketLoader {
     const raw = await this.fileSystem.readJson(path.resolve(this.ticketsPath));
     return ticketsSchema.parse(raw);
   }
-
-  async loadById(ticketId: string): Promise<JiraTicket> {
-    const tickets = await this.loadAll();
-    const ticket = tickets.find((item) => item.id === ticketId);
-
-    if (!ticket) {
-      throw new Error(`Ticket not found: ${ticketId}`);
-    }
-
-    return ticket;
-  }
 }
